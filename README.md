@@ -7,7 +7,7 @@
 [![Version](https://img.shields.io/github/v/release/Tauwni/AgendaDCG?style=flat-square&label=version&color=ff3b30)](https://github.com/Tauwni/AgendaDCG/releases/latest)
 [![Téléchargements](https://img.shields.io/github/downloads/Tauwni/AgendaDCG/total?style=flat-square&label=t%C3%A9l%C3%A9chargements&color=1d1d1f)](https://github.com/Tauwni/AgendaDCG/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/Tauwni/AgendaDCG/desktop.yml?style=flat-square&label=build)](https://github.com/Tauwni/AgendaDCG/actions/workflows/desktop.yml)
-[![Netlify](https://img.shields.io/netlify/2cb3c802-98d4-414d-9b69-ec0f1ab18e9d?style=flat-square&label=site)](https://agenda-evals-0885.netlify.app)
+[![Site](https://img.shields.io/badge/site-en_ligne-34c759?style=flat-square&logo=netlify&logoColor=white)](https://agenda-evals-0885.netlify.app)
 [![Licence MIT](https://img.shields.io/github/license/Tauwni/AgendaDCG?style=flat-square&color=8e8e93)](LICENSE)
 
 **L'agenda partagé des évaluations de la classe, avec les cours en PDF pour chaque éval.**<br>
