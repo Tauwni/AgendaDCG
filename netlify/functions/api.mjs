@@ -3,6 +3,29 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 const COOKIE = "agenda_session";
 const MAX_PDF = 5.5 * 1024 * 1024;
+const MAX_R2_PDF = 100 * 1024 * 1024;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+const workerUrl = () => (Netlify.env.get("PDF_WORKER_URL") || "").replace(/\/$/, "");
+const signingSecret = () => Netlify.env.get("PDF_SIGNING_SECRET") || "";
+const r2Enabled = () => !!(workerUrl() && signingSecret());
+
+function signedUrl(method, key, ttlSeconds, name) {
+  const exp = Math.floor(Date.now() / 1000) + ttlSeconds;
+  const sig = createHmac("sha256", signingSecret()).update(`${method}\n${key}\n${exp}`).digest("hex");
+  const q = new URLSearchParams({ exp: String(exp), sig });
+  if (name) q.set("name", name);
+  return `${workerUrl()}/f/${key}?${q}`;
+}
+
+async function deleteFile(file) {
+  if (file.storage === "r2") {
+    await fetch(signedUrl("DELETE", file.key, 300), { method: "DELETE" });
+    await pdfs().delete(`r2:${file.key}`);
+  } else {
+    await pdfs().delete(file.key);
+  }
+}
 
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), {
@@ -123,7 +146,7 @@ export default async (req) => {
     if (method === "DELETE") {
       const by = cleanName(url.searchParams.get("by"));
       if (!by) return json({ error: "Ton nom est obligatoire" }, 400);
-      await Promise.all(existing.files.map((f) => pdfs().delete(f.key)));
+      await Promise.all(existing.files.map(deleteFile));
       await events().delete(id);
       return json({ ok: true });
     }
@@ -131,6 +154,13 @@ export default async (req) => {
 
   if (resource === "files") {
     if (method === "GET" && id) {
+      const r2meta = UUID.test(id) && (await pdfs().get(`r2:${id}`, { type: "json" }));
+      if (r2meta) {
+        return new Response(null, {
+          status: 302,
+          headers: { location: signedUrl("GET", id, 2 * 60 * 60, r2meta.name), "cache-control": "no-store" },
+        });
+      }
       const res = await pdfs().getWithMetadata(id, { type: "arrayBuffer" });
       if (!res) return new Response("PDF introuvable", { status: 404 });
       const name = encodeURIComponent(res.metadata?.name || "cours.pdf");
@@ -144,7 +174,46 @@ export default async (req) => {
       });
     }
 
-    if (method === "POST") {
+    if (method === "POST" && id === "start") {
+      if (!r2Enabled()) return json({ error: "Stockage R2 non configuré" }, 501);
+      const body = await req.json().catch(() => ({}));
+      if (!cleanName(body.by)) return json({ error: "Ton nom est obligatoire" }, 400);
+      const ev = await events().get(String(body.event || ""), { type: "json" });
+      if (!ev) return json({ error: "Éval introuvable" }, 404);
+      const size = Number(body.size) || 0;
+      if (size <= 0) return json({ error: "Fichier vide" }, 400);
+      if (size > MAX_R2_PDF) return json({ error: "PDF trop lourd (max 100 Mo)" }, 413);
+      const key = randomUUID();
+      return json({ key, uploadUrl: signedUrl("PUT", key, 30 * 60) });
+    }
+
+    if (method === "POST" && id === "finish") {
+      if (!r2Enabled()) return json({ error: "Stockage R2 non configuré" }, 501);
+      const body = await req.json().catch(() => ({}));
+      const by = cleanName(body.by);
+      const key = String(body.key || "");
+      let name = cleanText(body.name, 120) || "cours.pdf";
+      if (!by) return json({ error: "Ton nom est obligatoire" }, 400);
+      if (!UUID.test(key)) return json({ error: "Fichier invalide" }, 400);
+      const ev = await events().get(String(body.event || ""), { type: "json" });
+      if (!ev) return json({ error: "Éval introuvable" }, 404);
+      if (ev.files.some((f) => f.key === key)) return json(ev);
+      const head = await fetch(signedUrl("GET", key, 300), { method: "HEAD" });
+      if (!head.ok) return json({ error: "Le PDF n'a pas été reçu" }, 400);
+      const size = Number(head.headers.get("content-length")) || 0;
+      if (!name.toLowerCase().endsWith(".pdf")) name += ".pdf";
+      await pdfs().setJSON(`r2:${key}`, { name, eventId: ev.id });
+      const now = new Date().toISOString();
+      const file = { key, name, size, uploadedBy: by, uploadedAt: now, storage: "r2" };
+      const updated = {
+        ...ev, files: [...ev.files, file], updatedBy: by, updatedAt: now,
+        history: [...ev.history, { by, at: now, action: `a ajouté « ${name} »` }].slice(-50),
+      };
+      await events().setJSON(ev.id, updated);
+      return json(updated, 201);
+    }
+
+    if (method === "POST" && !id) {
       const eventId = url.searchParams.get("event") || "";
       const by = cleanName(url.searchParams.get("by"));
       let name = cleanText(url.searchParams.get("name"), 120) || "cours.pdf";
@@ -176,7 +245,7 @@ export default async (req) => {
       if (!ev) return json({ error: "Éval introuvable" }, 404);
       const file = ev.files.find((f) => f.key === id);
       if (!file) return json({ error: "PDF introuvable" }, 404);
-      await pdfs().delete(id);
+      await deleteFile(file);
       const now = new Date().toISOString();
       const updated = {
         ...ev, files: ev.files.filter((f) => f.key !== id), updatedBy: by, updatedAt: now,

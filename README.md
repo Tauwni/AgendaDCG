@@ -133,13 +133,20 @@ flowchart LR
         S["Site<br/>public/index.html"]
         F["API<br/>netlify/functions/api.mjs"]
         E[("Évals<br/>Netlify Blobs")]
-        P[("PDF de cours<br/>Netlify Blobs")]
+    end
+    subgraph Cloudflare
+        W["Worker PDF<br/>pdf-worker/"]
+        P[("PDF de cours<br/>R2")]
     end
     A & B & C & D --> S
     S -- "fetch /api/*" --> F
     F --> E
-    F --> P
+    F -. "liens signés" .-> W
+    S -- "envoi et lecture des PDF" --> W
+    W --> P
 ```
+
+Les PDF ne passent pas par Netlify. L'API donne au navigateur un lien signé valable quelques minutes, et le navigateur envoie ou lit le PDF directement sur le Worker Cloudflare, qui le stocke dans R2. Sans lien signé, le Worker refuse tout accès.
 
 Les apps Mac et Windows sont des fenêtres [Electron](https://www.electronjs.org/) qui affichent le site. Il n'y a qu'une seule interface et une seule source de données, donc rien à synchroniser à la main, et les apps profitent de chaque mise à jour du site sans être réinstallées.
 
@@ -147,7 +154,8 @@ Les apps Mac et Windows sont des fenêtres [Electron](https://www.electronjs.org
 | --- | --- |
 | Interface | HTML, CSS et JavaScript, sans framework |
 | API | [Netlify Functions](https://docs.netlify.com/functions/overview/) (Node.js) |
-| Stockage | [Netlify Blobs](https://docs.netlify.com/blobs/overview/) pour les évals et les PDF |
+| Stockage | [Netlify Blobs](https://docs.netlify.com/blobs/overview/) pour les évals, [Cloudflare R2](https://developers.cloudflare.com/r2/) pour les PDF |
+| PDF | [Cloudflare Worker](https://developers.cloudflare.com/workers/) avec liens signés (HMAC) |
 | Connexion | Mot de passe partagé, cookie de session `HttpOnly` signé |
 | Apps de bureau | [Electron](https://www.electronjs.org/) et [electron-builder](https://www.electron.build/) |
 | Builds | [GitHub Actions](https://github.com/Tauwni/AgendaDCG/actions) sur macOS et Windows |
@@ -170,6 +178,17 @@ netlify dev
 ```
 
 L'agenda tourne alors sur http://localhost:8888.
+
+Pour envoyer des PDF en local, lance aussi le Worker (R2 est simulé sur ta machine) :
+
+```bash
+cd pdf-worker
+npm install
+echo "SIGNING_SECRET=un-secret" > .dev.vars
+npx wrangler dev --port 8787
+```
+
+et ajoute au `.env` du projet `PDF_WORKER_URL=http://localhost:8787` et `PDF_SIGNING_SECRET=un-secret`. Sans Worker, l'agenda garde l'ancien envoi via Netlify, limité à 5,5 Mo.
 
 </details>
 
@@ -219,6 +238,8 @@ AgendaDCG/
 │   └── index.html          # Interface : calendrier, fiches d'éval, envoi de PDF
 ├── netlify/functions/
 │   └── api.mjs             # API : connexion, évals, PDF
+├── pdf-worker/
+│   └── src/index.js        # Worker Cloudflare : envoi et lecture des PDF dans R2
 ├── desktop/
 │   ├── main.js             # Fenêtre Electron
 │   ├── offline.html        # Écran affiché sans connexion
@@ -232,7 +253,7 @@ AgendaDCG/
 
 ## Limites
 
-- Un PDF ne peut pas dépasser **5,5 Mo**, à cause de la limite des fonctions Netlify. Compresse les cours scannés avant de les envoyer.
+- Un PDF ne peut pas dépasser **100 Mo** (limite d'envoi des Workers Cloudflare gratuits).
 - Il faut internet : l'agenda ne fonctionne pas hors ligne.
 
 ## Licence
