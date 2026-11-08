@@ -14,6 +14,22 @@ function sameSig(a, b) {
   return x.byteLength === y.byteLength && crypto.subtle.timingSafeEqual(x, y);
 }
 
+function parseRange(header, size) {
+  if (!header) return null;
+  const m = header.match(/^bytes=(\d*)-(\d*)$/);
+  if (!m || (m[1] === "" && m[2] === "")) return null;
+  let start, end;
+  if (m[1] === "") {
+    start = Math.max(0, size - Number(m[2]));
+    end = size - 1;
+  } else {
+    start = Number(m[1]);
+    end = m[2] === "" ? size - 1 : Math.min(Number(m[2]), size - 1);
+  }
+  if (start >= size || end < start) return "invalid";
+  return { offset: start, length: end - start + 1 };
+}
+
 function corsHeaders(req) {
   const origin = req.headers.get("origin");
   if (!ORIGINS.includes(origin)) return {};
@@ -72,7 +88,11 @@ export default {
     }
 
     if (req.method === "GET") {
-      const obj = await env.PDFS.get(key, { range: req.headers });
+      const meta = await env.PDFS.head(key);
+      if (!meta) return json(req, { error: "PDF introuvable" }, 404);
+      const range = parseRange(req.headers.get("range"), meta.size);
+      if (range === "invalid") return reply(req, null, 416, { "content-range": `bytes */${meta.size}` });
+      const obj = await env.PDFS.get(key, range ? { range } : {});
       if (!obj) return json(req, { error: "PDF introuvable" }, 404);
       const name = (url.searchParams.get("name") || "cours.pdf").slice(0, 150);
       const headers = {
@@ -83,12 +103,9 @@ export default {
         "x-content-type-options": "nosniff",
         etag: obj.httpEtag,
       };
-      if (obj.range && req.headers.has("range")) {
-        const r = obj.range;
-        const start = "suffix" in r ? obj.size - r.suffix : r.offset;
-        const length = "suffix" in r ? r.suffix : r.length ?? obj.size - start;
-        headers["content-range"] = `bytes ${start}-${start + length - 1}/${obj.size}`;
-        headers["content-length"] = String(length);
+      if (range) {
+        headers["content-range"] = `bytes ${range.offset}-${range.offset + range.length - 1}/${meta.size}`;
+        headers["content-length"] = String(range.length);
         return reply(req, obj.body, 206, headers);
       }
       headers["content-length"] = String(obj.size);
