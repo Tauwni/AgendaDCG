@@ -1,0 +1,41 @@
+{
+  "name": "agenda-dcg",
+  "productName": "Agenda DCG",
+  "version": "1.0.0",
+  "description": "Agenda des évaluations de la classe, synchronisé avec le site",
+  "author": "Tauwni",
+  "license": "MIT",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.tauwni.agendadcg",
+    "productName": "Agenda DCG",
+    "files": ["main.js", "offline.html"],
+    "directories": { "buildResources": "build", "output": "dist" },
+    "mac": {
+      "category": "public.app-category.education",
+      "target": [{ "target": "dmg", "arch": ["universal"] }],
+      "identity": "-",
+      "hardenedRuntime": false,
+      "artifactName": "Agenda-DCG-Mac.${ext}"
+    },
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64", "arm64"] }],
+      "artifactName": "Agenda-DCG-Windows-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "shortcutName": "Agenda DCG"
+    },
+    "publish": [{ "provider": "github", "owner": "Tauwni", "repo": "AgendaDCG", "releaseType": "release" }]
+  }
+}

@@ -1,0 +1,7 @@
+node_modules
+.env
+.netlify
+.env.production.local
+deno.lock
+dist
+.DS_Store

@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<title>Agenda Évals</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23fff'/%3E%3Crect width='64' height='18' rx='0' fill='%23ff3b30'/%3E%3Ctext x='32' y='52' font-size='30' text-anchor='middle' font-family='-apple-system,Helvetica' font-weight='300'%3E%E2%9C%8E%3C/text%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #ffffff;
+  --bg2: #f2f2f7;
+  --card: #ffffff;
+  --text: #000000;
+  --text2: #8e8e93;
+  --line: #e5e5ea;
+  --accent: #ff3b30;
+  --sheet-shadow: 0 10px 40px rgba(0,0,0,.18);
+  --red: #ff3b30; --orange: #ff9500; --yellow: #ffcc00; --green: #34c759;
+  --blue: #007aff; --purple: #af52de; --brown: #a2845e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000; --bg2: #1c1c1e; --card: #1c1c1e; --text: #ffffff;
+    --text2: #8e8e93; --line: #2c2c2e; --accent: #ff453a;
+    --sheet-shadow: 0 10px 40px rgba(0,0,0,.6);
+    --red: #ff453a; --orange: #ff9f0a; --yellow: #ffd60a; --green: #30d158;
+    --blue: #0a84ff; --purple: #bf5af2; --brown: #ac8e68;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px; line-height: 1.35; -webkit-font-smoothing: antialiased;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+input, textarea { font: inherit; color: var(--text); }
+.hidden { display: none !important; }
+
+/* Login */
+#login { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; background: var(--bg2); }
+.login-card { width: 100%; max-width: 360px; text-align: center; }
+.app-icon { width: 76px; height: 76px; margin: 0 auto 18px; border-radius: 18px; background: var(--card); box-shadow: 0 4px 16px rgba(0,0,0,.12); overflow: hidden; display: flex; flex-direction: column; }
+.app-icon .top { background: var(--accent); color: #fff; font-size: 11px; font-weight: 600; padding: 4px 0 3px; text-transform: uppercase; }
+.app-icon .num { flex: 1; display: grid; place-items: center; font-size: 36px; font-weight: 300; }
+.login-card h1 { font-size: 28px; margin: 0 0 6px; font-weight: 700; }
+.login-card p { color: var(--text2); margin: 0 0 24px; }
+.group { background: var(--card); border-radius: 12px; overflow: hidden; text-align: left; }
+.group input, .group textarea { width: 100%; border: 0; background: transparent; padding: 13px 16px; outline: none; }
+.group > * + * { border-top: .5px solid var(--line); }
+.btn-primary { width: 100%; margin-top: 16px; background: var(--accent); color: #fff; border-radius: 12px; padding: 14px; font-weight: 600; }
+.btn-primary:disabled { opacity: .5; }
+.error { color: var(--accent); font-size: 14px; margin-top: 12px; min-height: 18px; }
+
+/* App shell */
+#app { max-width: 1200px; margin: 0 auto; padding: 0 16px 40px; }
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 0 4px; gap: 8px; position: sticky; top: 0; background: var(--bg); z-index: 5; }
+.topbar .left, .topbar .right { display: flex; align-items: center; gap: 4px; }
+.link { color: var(--accent); font-size: 17px; padding: 6px 8px; border-radius: 8px; }
+.link:hover { background: var(--bg2); }
+.icon-btn { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: var(--accent); }
+.icon-btn:hover { background: var(--bg2); }
+.icon-btn svg { width: 22px; height: 22px; }
+.who { display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 20px; background: var(--bg2); font-size: 14px; }
+.avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12px; font-weight: 600; display: grid; place-items: center; }
+.month-title { font-size: 34px; font-weight: 700; margin: 6px 0 10px; letter-spacing: -.02em; }
+.month-title span { color: var(--accent); }
+
+.layout { display: grid; grid-template-columns: 1fr 340px; gap: 28px; align-items: start; }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; gap: 12px; } }
+
+.weekdays, .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.weekdays div { font-size: 12px; color: var(--text2); text-align: center; padding: 4px 0 6px; font-weight: 500; text-transform: uppercase; }
+.weekdays div:nth-child(n+6), .day.weekend .num { color: var(--text2); }
+.grid { border-top: .5px solid var(--line); }
+.day { min-height: 104px; border-bottom: .5px solid var(--line); padding: 4px 3px; cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.day + .day { border-left: .5px solid var(--line); }
+.day:nth-child(7n+1) { border-left: 0; }
+.day .num { align-self: flex-end; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; font-size: 15px; margin-bottom: 2px; }
+.day.other { opacity: .35; }
+.day.today .num { color: var(--accent); font-weight: 700; }
+.day.selected .num { background: var(--text); color: var(--bg); font-weight: 700; }
+.day.today.selected .num { background: var(--accent); color: #fff; }
+.pill { font-size: 12px; line-height: 1.3; padding: 2px 6px; border-radius: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--c); background: color-mix(in srgb, var(--c) 16%, transparent); font-weight: 500; }
+.more { font-size: 11px; color: var(--text2); padding-left: 6px; }
+.dots { display: none; justify-content: center; gap: 3px; height: 6px; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+
+@media (max-width: 700px) {
+  .month-title { font-size: 28px; }
+  .grid { border-top: 0; }
+  .day { min-height: 52px; border: 0 !important; align-items: center; padding: 2px 0; }
+  .day .num { align-self: center; font-size: 17px; width: 34px; height: 34px; margin: 0; }
+  .pill, .more { display: none; }
+  .dots { display: flex; }
+  .weekdays div { font-size: 11px; }
+}
+
+/* Day panel */
+.panel h2 { font-size: 20px; margin: 4px 0 10px; font-weight: 700; }
+.panel h2 small { display: block; font-size: 13px; color: var(--text2); font-weight: 500; text-transform: uppercase; letter-spacing: .02em; }
+.list { display: flex; flex-direction: column; gap: 8px; }
+.ev { display: flex; gap: 12px; background: var(--bg2); border-radius: 12px; padding: 12px 14px; text-align: left; width: 100%; }
+.ev:hover { filter: brightness(.98); }
+.ev .bar { width: 4px; border-radius: 2px; background: var(--c); flex-shrink: 0; }
+.ev .body { min-width: 0; flex: 1; }
+.ev .t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ev .s { font-size: 14px; color: var(--text2); }
+.ev .meta { display: flex; gap: 10px; align-items: center; margin-top: 4px; font-size: 13px; color: var(--text2); }
+.ev .meta svg { width: 13px; height: 13px; vertical-align: -2px; }
+.empty { color: var(--text2); padding: 22px 0; text-align: center; font-size: 15px; }
+.upcoming { margin-top: 24px; }
+
+/* Sheet */
+.backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 20; display: flex; align-items: center; justify-content: center; animation: fade .2s; }
+.sheet { background: var(--bg2); width: 100%; max-width: 520px; max-height: 88vh; overflow-y: auto; border-radius: 14px; box-shadow: var(--sheet-shadow); animation: up .25s cubic-bezier(.2,.8,.2,1); }
+@media (max-width: 700px) {
+  .backdrop { align-items: flex-end; }
+  .sheet { border-radius: 14px 14px 0 0; max-height: 94vh; padding-bottom: env(safe-area-inset-bottom); }
+}
+@keyframes fade { from { opacity: 0; } }
+@keyframes up { from { transform: translateY(30px); opacity: 0; } }
+.sheet-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; position: sticky; top: 0; background: var(--bg2); z-index: 1; }
+.sheet-head h3 { font-size: 17px; margin: 0; font-weight: 600; }
+.sheet-head .link { padding: 0; }
+.sheet-head .link.bold { font-weight: 600; }
+.sheet-body { padding: 0 16px 20px; display: flex; flex-direction: column; gap: 20px; }
+.label { font-size: 13px; color: var(--text2); text-transform: uppercase; margin: 0 0 6px 16px; }
+.row { display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; gap: 12px; }
+.row input[type=date], .row input[type=time] { border: 0; background: var(--bg2); border-radius: 7px; padding: 5px 8px; text-align: right; }
+.swatches { display: flex; gap: 10px; padding: 12px 16px; flex-wrap: wrap; }
+.swatch { width: 28px; height: 28px; border-radius: 50%; background: var(--c); outline-offset: 3px; }
+.swatch.on { outline: 2.5px solid var(--c); }
+.btn-row { width: 100%; padding: 13px 16px; text-align: center; color: var(--accent); background: var(--card); border-radius: 12px; font-size: 17px; }
+.btn-row.blue { color: var(--blue); }
+
+.detail-title { font-size: 24px; font-weight: 700; margin: 0; display: flex; gap: 10px; align-items: flex-start; }
+.detail-title .bar { width: 5px; align-self: stretch; border-radius: 3px; background: var(--c); }
+.detail-sub { color: var(--text2); margin-top: 4px; }
+.notes { white-space: pre-wrap; padding: 12px 16px; }
+.file { display: flex; align-items: center; gap: 12px; padding: 10px 16px; }
+.file .ico { width: 34px; height: 40px; border-radius: 5px; background: var(--red); color: #fff; font-size: 10px; font-weight: 700; display: grid; place-items: center; flex-shrink: 0; }
+.file a { color: var(--text); text-decoration: none; flex: 1; min-width: 0; }
+.file a .n { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file a .m { font-size: 13px; color: var(--text2); }
+.file .del { color: var(--text2); width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; }
+.file .del:hover { color: var(--accent); background: var(--bg2); }
+.upload { display: flex; align-items: center; gap: 10px; padding: 13px 16px; color: var(--blue); cursor: pointer; }
+.upload input { display: none; }
+.history { font-size: 13px; color: var(--text2); padding: 10px 16px; display: flex; flex-direction: column; gap: 4px; }
+.history b { color: var(--text); font-weight: 600; }
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 20px; font-size: 14px; z-index: 40; animation: fade .2s; max-width: calc(100% - 32px); }
+.spinner { width: 18px; height: 18px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; vertical-align: -3px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<section id="login" class="hidden">
+  <form class="login-card" id="loginForm">
+    <div class="app-icon"><div class="top" id="iconDay"></div><div class="num" id="iconNum"></div></div>
+    <h1>Agenda Évals</h1>
+    <p>Les évaluations de la classe et leurs cours</p>
+    <div class="group">
+      <input id="loginName" placeholder="Ton prénom" autocomplete="given-name" maxlength="40" required>
+      <input id="loginPass" type="password" placeholder="Mot de passe de la classe" autocomplete="current-password" required>
+    </div>
+    <button class="btn-primary" id="loginBtn">Entrer</button>
+    <div class="error" id="loginErr"></div>
+  </form>
+</section>
+
+<section id="app" class="hidden">
+  <header class="topbar">
+    <div class="left">
+      <button class="icon-btn" id="prev" aria-label="Mois précédent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <button class="link" id="todayBtn">Aujourd'hui</button>
+      <button class="icon-btn" id="next" aria-label="Mois suivant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+    </div>
+    <div class="right">
+      <button class="who" id="whoBtn" title="Changer de nom"><span class="avatar" id="avatar"></span><span id="whoName"></span></button>
+      <button class="icon-btn" id="addBtn" aria-label="Nouvelle éval"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+    </div>
+  </header>
+  <h1 class="month-title" id="monthTitle"></h1>
+  <div class="layout">
+    <div>
+      <div class="weekdays"><div>Lun</div><div>Mar</div><div>Mer</div><div>Jeu</div><div>Ven</div><div>Sam</div><div>Dim</div></div>
+      <div class="grid" id="grid"></div>
+    </div>
+    <aside class="panel">
+      <h2 id="dayTitle"></h2>
+      <div class="list" id="dayList"></div>
+      <div class="upcoming">
+        <h2><small>À venir</small></h2>
+        <div class="list" id="upcomingList"></div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<div id="sheetRoot"></div>
+
+<script>
+const COLORS = ["red", "orange", "yellow", "green", "blue", "purple", "brown"];
+const MONTHS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+const DAYS = ["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"];
+const $ = (s) => document.querySelector(s);
+
+const state = { events: [], month: firstOfMonth(new Date()), selected: iso(new Date()) };
+
+function iso(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+function parse(s) { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); }
+function firstOfMonth(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function longDate(s) { const d = parse(s); return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; }
+function shortDate(s) { const d = parse(s); return `${DAYS[d.getDay()].slice(0, 3)}. ${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 4)}.`; }
+function size(n) { return n > 1048576 ? (n / 1048576).toFixed(1).replace(".", ",") + " Mo" : Math.max(1, Math.round(n / 1024)) + " Ko"; }
+function ago(t) { const d = new Date(t); return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) + " à " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }); }
+const col = (c) => `var(--${COLORS.includes(c) ? c : "blue"})`;
+
+function getName() { try { return localStorage.getItem("agenda_name") || ""; } catch { return ""; } }
+function setName(n) { try { localStorage.setItem("agenda_name", n); } catch {} renderWho(); }
+
+function toast(msg) {
+  const t = document.createElement("div");
+  t.className = "toast"; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2600);
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch("/api/" + path, opts);
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && path !== "login") { showLogin(); throw new Error("Session expirée"); }
+  if (!res.ok) throw new Error(data.error || "Erreur");
+  return data;
+}
+
+function showLogin() {
+  const now = new Date();
+  $("#iconDay").textContent = DAYS[now.getDay()];
+  $("#iconNum").textContent = now.getDate();
+  $("#loginName").value = getName();
+  $("#app").classList.add("hidden");
+  $("#login").classList.remove("hidden");
+}
+
+$("#loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = $("#loginName").value.trim();
+  if (!name) return;
+  $("#loginBtn").disabled = true; $("#loginErr").textContent = "";
+  try {
+    await api("login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: $("#loginPass").value }) });
+    setName(name);
+    $("#loginPass").value = "";
+    await start();
+  } catch (err) { $("#loginErr").textContent = err.message; }
+  $("#loginBtn").disabled = false;
+});
+
+async function start() {
+  if (!getName()) return showLogin();
+  state.events = await api("events");
+  $("#login").classList.add("hidden");
+  $("#app").classList.remove("hidden");
+  renderWho(); render();
+}
+
+function renderWho() {
+  const n = getName();
+  $("#whoName").textContent = n;
+  $("#avatar").textContent = n.slice(0, 1).toUpperCase();
+}
+
+function byDate() {
+  const m = {};
+  for (const e of state.events) (m[e.date] ||= []).push(e);
+  return m;
+}
+
+function render() {
+  const map = byDate();
+  const m = state.month;
+  $("#monthTitle").innerHTML = `${MONTHS[m.getMonth()]} <span>${m.getFullYear()}</span>`;
+  const start = new Date(m); start.setDate(1 - ((m.getDay() + 6) % 7));
+  const today = iso(new Date());
+  let html = "";
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(start); d.setDate(start.getDate() + i);
+    const key = iso(d);
+    const evs = map[key] || [];
+    const cls = ["day", d.getMonth() !== m.getMonth() && "other", key === today && "today", key === state.selected && "selected", d.getDay() % 6 === 0 && "weekend"].filter(Boolean).join(" ");
+    const pills = evs.slice(0, 3).map((e) => `<div class="pill" style="--c:${col(e.color)}">${esc(e.title)}</div>`).join("");
+    const more = evs.length > 3 ? `<div class="more">+${evs.length - 3} autre${evs.length > 4 ? "s" : ""}</div>` : "";
+    const dots = evs.slice(0, 3).map((e) => `<span class="dot" style="--c:${col(e.color)}"></span>`).join("");
+    html += `<button class="${cls}" data-date="${key}" aria-label="${longDate(key)}, ${evs.length} éval(s)"><span class="num">${d.getDate()}</span>${pills}${more}<span class="dots">${dots}</span></button>`;
+  }
+  $("#grid").innerHTML = html;
+
+  const sel = map[state.selected] || [];
+  $("#dayTitle").innerHTML = `<small>${state.selected === today ? "Aujourd'hui" : DAYS[parse(state.selected).getDay()]}</small>${parse(state.selected).getDate()} ${MONTHS[parse(state.selected).getMonth()]}`;
+  $("#dayList").innerHTML = sel.length ? sel.map(evCard).join("") : `<div class="empty">Aucune éval ce jour-là</div>`;
+
+  const upcoming = state.events.filter((e) => e.date >= today).slice(0, 6);
+  $("#upcomingList").innerHTML = upcoming.length ? upcoming.map((e) => evCard(e, true)).join("") : `<div class="empty">Rien de prévu</div>`;
+}
+
+const clip = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.1l-9.2 9.2a6 6 0 01-8.5-8.5l9.2-9.2a4 4 0 015.7 5.7l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5"/></svg>`;
+function evCard(e, withDate) {
+  const when = [withDate && shortDate(e.date), e.time].filter(Boolean).join(" · ");
+  return `<button class="ev" data-id="${e.id}" style="--c:${col(e.color)}"><span class="bar"></span><span class="body">
+    <div class="t">${esc(e.title)}</div>
+    ${e.subject ? `<div class="s">${esc(e.subject)}</div>` : ""}
+    <div class="meta">${when ? `<span>${esc(when)}</span>` : ""}${e.files.length ? `<span>${clip} ${e.files.length} cours</span>` : ""}</div>
+  </span></button>`;
+}
+
+$("#grid").addEventListener("click", (e) => {
+  const b = e.target.closest(".day"); if (!b) return;
+  state.selected = b.dataset.date;
+  const d = parse(b.dataset.date);
+  if (d.getMonth() !== state.month.getMonth()) state.month = firstOfMonth(d);
+  render();
+});
+$("#grid").addEventListener("dblclick", (e) => { const b = e.target.closest(".day"); if (b) openEdit(null, b.dataset.date); });
+document.addEventListener("click", (e) => { const b = e.target.closest(".ev"); if (b) openDetail(b.dataset.id); });
+$("#prev").onclick = () => { state.month = new Date(state.month.getFullYear(), state.month.getMonth() - 1, 1); render(); };
+$("#next").onclick = () => { state.month = new Date(state.month.getFullYear(), state.month.getMonth() + 1, 1); render(); };
+$("#todayBtn").onclick = () => { state.month = firstOfMonth(new Date()); state.selected = iso(new Date()); render(); };
+$("#addBtn").onclick = () => openEdit(null, state.selected);
+$("#whoBtn").onclick = () => {
+  const bd = openSheet(`
+    <div class="sheet-head">
+      <button class="link" data-act="cancel">Annuler</button>
+      <h3>Ton prénom</h3>
+      <button class="link bold" data-act="save">OK</button>
+    </div>
+    <div class="sheet-body">
+      <div class="group"><input name="who" maxlength="40" value="${esc(getName())}" placeholder="Ton prénom"></div>
+      <div class="label" style="margin-top:-8px">Affiché sur tes ajouts et modifications.</div>
+      <button class="btn-row" data-act="logout">Se déconnecter</button>
+    </div>`);
+  const input = bd.querySelector("[name=who]");
+  const save = () => { const n = input.value.trim(); if (!n) return toast("Ajoute ton prénom"); setName(n.slice(0, 40)); closeSheet(); };
+  bd.querySelector("[data-act=cancel]").onclick = closeSheet;
+  bd.querySelector("[data-act=save]").onclick = save;
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") save(); });
+  bd.querySelector("[data-act=logout]").onclick = async () => { await api("logout", { method: "POST" }).catch(() => {}); closeSheet(); showLogin(); };
+  input.focus(); input.select();
+};
+
+let touchX = null;
+$("#grid").addEventListener("touchstart", (e) => { touchX = e.touches[0].clientX; }, { passive: true });
+$("#grid").addEventListener("touchend", (e) => {
+  if (touchX === null) return;
+  const dx = e.changedTouches[0].clientX - touchX; touchX = null;
+  if (Math.abs(dx) > 60) (dx < 0 ? $("#next") : $("#prev")).click();
+});
+
+function openSheet(html) {
+  $("#sheetRoot").innerHTML = `<div class="backdrop"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
+  const bd = $("#sheetRoot .backdrop");
+  bd.addEventListener("click", (e) => { if (e.target === bd) closeSheet(); });
+  return bd;
+}
+function closeSheet() { $("#sheetRoot").innerHTML = ""; }
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
+
+function upsert(ev) {
+  const i = state.events.findIndex((x) => x.id === ev.id);
+  if (i >= 0) state.events[i] = ev; else state.events.push(ev);
+  state.events.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  render();
+}
+
+function openEdit(ev, date) {
+  const e = ev || { title: "", subject: "", date: date || state.selected, time: "", color: "blue", notes: "" };
+  const bd = openSheet(`
+    <div class="sheet-head">
+      <button class="link" data-act="cancel">Annuler</button>
+      <h3>${ev ? "Modifier l'éval" : "Nouvelle éval"}</h3>
+      <button class="link bold" data-act="save">${ev ? "OK" : "Ajouter"}</button>
+    </div>
+    <div class="sheet-body">
+      <div class="group">
+        <input name="title" placeholder="Titre (ex : Contrôle chapitre 3)" maxlength="120" value="${esc(e.title)}">
+        <input name="subject" placeholder="Matière" maxlength="60" value="${esc(e.subject)}">
+      </div>
+      <div class="group">
+        <div class="row"><span>Date</span><input type="date" name="date" value="${esc(e.date)}"></div>
+        <div class="row"><span>Heure <span style="color:var(--text2)">(facultatif)</span></span><input type="time" name="time" value="${esc(e.time)}"></div>
+      </div>
+      <div>
+        <div class="label">Couleur</div>
+        <div class="group swatches">${COLORS.map((c) => `<button type="button" class="swatch ${c === e.color ? "on" : ""}" data-color="${c}" style="--c:var(--${c})" aria-label="${c}"></button>`).join("")}</div>
+      </div>
+      <div class="group"><textarea name="notes" rows="4" placeholder="Notes (chapitres à réviser, consignes…)" maxlength="2000">${esc(e.notes)}</textarea></div>
+      ${ev ? "" : `<div class="label" style="margin-top:-8px">Tu pourras ajouter les PDF de cours juste après.</div>`}
+    </div>`);
+  let color = e.color;
+  bd.querySelectorAll(".swatch").forEach((s) => s.onclick = () => {
+    color = s.dataset.color;
+    bd.querySelectorAll(".swatch").forEach((x) => x.classList.toggle("on", x === s));
+  });
+  bd.querySelector("[data-act=cancel]").onclick = () => ev ? openDetail(ev.id) : closeSheet();
+  bd.querySelector("[data-act=save]").onclick = async (btn) => {
+    const v = (n) => bd.querySelector(`[name=${n}]`).value;
+    const body = { title: v("title"), subject: v("subject"), date: v("date"), time: v("time"), notes: v("notes"), color, by: getName() };
+    if (!body.title.trim()) return toast("Ajoute un titre");
+    btn.target.innerHTML = `<span class="spinner"></span>`;
+    try {
+      const saved = await api(ev ? `events/${ev.id}` : "events", { method: ev ? "PUT" : "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      upsert(saved);
+      state.selected = saved.date; state.month = firstOfMonth(parse(saved.date)); render();
+      openDetail(saved.id);
+      toast(ev ? "Éval modifiée" : "Éval ajoutée");
+    } catch (err) { toast(err.message); btn.target.textContent = ev ? "OK" : "Ajouter"; }
+  };
+  bd.querySelector("[name=title]").focus();
+}
+
+function openDetail(id) {
+  const e = state.events.find((x) => x.id === id);
+  if (!e) return closeSheet();
+  const hist = [...e.history].reverse().slice(0, 8);
+  const bd = openSheet(`
+    <div class="sheet-head">
+      <button class="link" data-act="close">Fermer</button>
+      <h3></h3>
+      <button class="link" data-act="edit">Modifier</button>
+    </div>
+    <div class="sheet-body">
+      <div>
+        <h2 class="detail-title" style="--c:${col(e.color)}"><span class="bar"></span><span>${esc(e.title)}</span></h2>
+        <div class="detail-sub">${esc(e.subject ? e.subject + " · " : "")}${longDate(e.date)}${e.time ? " à " + esc(e.time) : ""}</div>
+      </div>
+      ${e.notes ? `<div><div class="label">Notes</div><div class="group notes">${esc(e.notes)}</div></div>` : ""}
+      <div>
+        <div class="label">Cours (${e.files.length})</div>
+        <div class="group">
+          ${e.files.map((f) => `
+            <div class="file">
+              <span class="ico">PDF</span>
+              <a href="/api/files/${encodeURIComponent(f.key)}" target="_blank" rel="noopener"><div class="n">${esc(f.name)}</div><div class="m">${size(f.size)} · ajouté par ${esc(f.uploadedBy)}</div></a>
+              <button class="del" data-del="${esc(f.key)}" aria-label="Supprimer ${esc(f.name)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>`).join("")}
+          <label class="upload"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span id="upLabel">Ajouter un PDF de cours</span><input type="file" accept="application/pdf,.pdf" multiple></label>
+        </div>
+      </div>
+      <div>
+        <div class="label">Historique</div>
+        <div class="group history">${hist.map((h) => `<div><b>${esc(h.by)}</b> ${esc(h.action)} · ${ago(h.at)}</div>`).join("")}</div>
+      </div>
+      <button class="btn-row" data-act="delete">Supprimer l'éval</button>
+    </div>`);
+
+  bd.querySelector("[data-act=close]").onclick = closeSheet;
+  bd.querySelector("[data-act=edit]").onclick = () => openEdit(e);
+  bd.querySelector("[data-act=delete]").onclick = async () => {
+    if (!confirm(`Supprimer « ${e.title} » et ses ${e.files.length} PDF ? C'est définitif pour toute la classe.`)) return;
+    try {
+      await api(`events/${e.id}?by=${encodeURIComponent(getName())}`, { method: "DELETE" });
+      state.events = state.events.filter((x) => x.id !== e.id);
+      closeSheet(); render(); toast("Éval supprimée");
+    } catch (err) { toast(err.message); }
+  };
+  bd.querySelectorAll("[data-del]").forEach((b) => b.onclick = async () => {
+    const f = e.files.find((x) => x.key === b.dataset.del);
+    if (!confirm(`Supprimer « ${f.name} » ?`)) return;
+    try {
+      upsert(await api(`files/${encodeURIComponent(f.key)}?event=${e.id}&by=${encodeURIComponent(getName())}`, { method: "DELETE" }));
+      openDetail(e.id);
+    } catch (err) { toast(err.message); }
+  });
+  bd.querySelector(".upload input").onchange = async (ev) => {
+    const files = [...ev.target.files];
+    const label = bd.querySelector("#upLabel");
+    for (const [i, f] of files.entries()) {
+      label.innerHTML = `<span class="spinner"></span> Envoi ${files.length > 1 ? `${i + 1}/${files.length}` : ""}…`;
+      if (f.size > 5.5 * 1024 * 1024) { toast(`« ${f.name} » dépasse 5,5 Mo`); continue; }
+      try {
+        upsert(await api(`files?event=${e.id}&by=${encodeURIComponent(getName())}&name=${encodeURIComponent(f.name)}`, { method: "POST", headers: { "content-type": "application/pdf" }, body: f }));
+      } catch (err) { toast(`${f.name} : ${err.message}`); }
+    }
+    openDetail(e.id);
+  };
+}
+
+api("me").then(start).catch(() => showLogin());
+</script>
+</body>
+</html>
