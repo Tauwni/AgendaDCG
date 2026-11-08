@@ -1,7 +1,7 @@
 {
   "name": "agenda-dcg",
   "productName": "Agenda DCG",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Agenda des évaluations de la classe, synchronisé avec le site",
   "author": "Tauwni",
   "license": "MIT",

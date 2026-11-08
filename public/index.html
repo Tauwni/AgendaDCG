@@ -219,7 +219,8 @@ function parse(s) { const [y, m, d] = s.split("-").map(Number); return new Date(
 function firstOfMonth(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
 function esc(s) { return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 function longDate(s) { const d = parse(s); return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; }
-function shortDate(s) { const d = parse(s); return `${DAYS[d.getDay()].slice(0, 3)}. ${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 4)}.`; }
+const MONTHS_SHORT = ["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."];
+function shortDate(s) { const d = parse(s); return `${DAYS[d.getDay()].slice(0, 3)}. ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`; }
 function size(n) { return n > 1048576 ? (n / 1048576).toFixed(1).replace(".", ",") + " Mo" : Math.max(1, Math.round(n / 1024)) + " Ko"; }
 function ago(t) { const d = new Date(t); return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) + " à " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }); }
 const col = (c) => `var(--${COLORS.includes(c) ? c : "blue"})`;
@@ -306,7 +307,7 @@ function render() {
 
   const sel = map[state.selected] || [];
   $("#dayTitle").innerHTML = `<small>${state.selected === today ? "Aujourd'hui" : DAYS[parse(state.selected).getDay()]}</small>${parse(state.selected).getDate()} ${MONTHS[parse(state.selected).getMonth()]}`;
-  $("#dayList").innerHTML = sel.length ? sel.map(evCard).join("") : `<div class="empty">Aucune éval ce jour-là</div>`;
+  $("#dayList").innerHTML = sel.length ? sel.map((e) => evCard(e)).join("") : `<div class="empty">Aucune éval ce jour-là</div>`;
 
   const upcoming = state.events.filter((e) => e.date >= today).slice(0, 6);
   $("#upcomingList").innerHTML = upcoming.length ? upcoming.map((e) => evCard(e, true)).join("") : `<div class="empty">Rien de prévu</div>`;
