@@ -1,27 +1,46 @@
 import { getStore } from "@netlify/blobs";
-import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
+import { KINDS, events, profiles, listAll, profileId, pushReady, sendPush, frDate, describe } from "../lib/shared.mjs";
 
 const COOKIE = "agenda_session";
+const PROFILE_COOKIE = "agenda_profile";
+const COOKIE_AGE = 60 * 60 * 24 * 365;
 const password = () => Netlify.env.get("AGENDA_PASSWORD") || "";
+const profileSecret = () => Netlify.env.get("PROFILE_SECRET") || "";
 const token = () => createHmac("sha256", password()).update("agenda-v1").digest("hex");
+const profileToken = (id) => createHmac("sha256", profileSecret()).update(`profile:${id}`).digest("hex");
 
 function safeEqual(a, b) {
-  const x = Buffer.from(a);
-  const y = Buffer.from(b);
+  const x = Buffer.from(String(a));
+  const y = Buffer.from(String(b));
   return x.length === y.length && timingSafeEqual(x, y);
 }
 
+const readCookie = (req, name) => (req.headers.get("cookie") || "").match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`))?.[1] || "";
+
 function isAuthed(req) {
   if (!password()) return false;
-  const m = (req.headers.get("cookie") || "").match(new RegExp(`${COOKIE}=([a-f0-9]+)`));
-  return !!m && safeEqual(m[1], token());
+  const v = readCookie(req, COOKIE);
+  return !!v && safeEqual(v, token());
 }
+
+function currentProfileId(req) {
+  if (!profileSecret()) return null;
+  const [id, sig] = decodeURIComponent(readCookie(req, PROFILE_COOKIE)).split(".");
+  return id && sig && safeEqual(sig, profileToken(id)) ? id : null;
+}
+
+const cookie = (name, value, age) => `${name}=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${age}`;
+const hashPin = (pin, salt) => scryptSync(String(pin), salt, 32).toString("hex");
 
 const MAX_PDF = 100 * 1024 * 1024;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const SLOTS = { cours: "la fiche de cours", sujet: "le sujet type", corrige: "le corrigé" };
-const KINDS = { eval: "l'éval", exercice: "l'exercice" };
 const COLORS = ["red", "orange", "yellow", "green", "blue", "purple", "brown"];
+const CATEGORIES = ["controle", "devoir", "examen", "entrainement"];
+const REMINDERS = [1, 2, 7];
+const MAX_FAILS = 5;
+const LOCK_MS = 15 * 60 * 1000;
 
 const workerUrl = () => (Netlify.env.get("PDF_WORKER_URL") || "").replace(/\/$/, "");
 const signingSecret = () => Netlify.env.get("PDF_SIGNING_SECRET") || "";
@@ -35,22 +54,19 @@ function signedUrl(method, key, ttlSeconds, name) {
   return `${workerUrl()}/f/${key}?${q}`;
 }
 
-const json = (data, status = 200, headers = {}) =>
-  new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json", ...headers } });
+function json(data, status = 200, cookies = []) {
+  const headers = new Headers({ "content-type": "application/json" });
+  for (const c of cookies) headers.append("set-cookie", c);
+  return new Response(JSON.stringify(data), { status, headers });
+}
 
-const cleanName = (s) => String(s || "").trim().slice(0, 40);
+const cleanName = (s) => String(s || "").trim().replace(/\s+/g, " ").slice(0, 40);
 const cleanText = (s, n) => String(s || "").trim().replace(/\s+/g, " ").slice(0, n);
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 const isTime = (s) => s === "" || /^\d{2}:\d{2}$/.test(s);
 
-const events = () => getStore({ name: "events", consistency: "strong" });
 const chapters = () => getStore({ name: "chapters", consistency: "strong" });
 const pdfs = () => getStore({ name: "pdfs", consistency: "strong" });
-
-async function listAll(store) {
-  const { blobs } = await store.list();
-  return (await Promise.all(blobs.map((b) => store.get(b.key, { type: "json" })))).filter(Boolean);
-}
 
 async function deleteR2(key) {
   await fetch(signedUrl("DELETE", key, 300), { method: "DELETE" });
@@ -89,26 +105,163 @@ function readChapterFields(body) {
   return { ch };
 }
 
+function readGrades(list) {
+  if (!Array.isArray(list) || list.length > 1000) return { error: "Liste de notes invalide" };
+  const out = [];
+  for (const g of list) {
+    const outOf = Number(g.outOf);
+    const value = Number(g.value);
+    const coef = Number(g.coef);
+    const grade = {
+      id: UUID.test(String(g.id)) ? String(g.id) : randomUUID(),
+      subject: cleanText(g.subject, 60),
+      title: cleanText(g.title, 120),
+      date: String(g.date || ""),
+      category: CATEGORIES.includes(g.category) ? g.category : "controle",
+      value, outOf, coef,
+    };
+    if (!grade.subject) return { error: "Chaque note doit avoir une matière" };
+    if (!isDate(grade.date)) return { error: "Date de note invalide" };
+    if (!(outOf > 0 && outOf <= 100)) return { error: "Barème invalide" };
+    if (!(value >= 0 && value <= outOf)) return { error: `Note invalide (entre 0 et ${outOf})` };
+    if (!(coef > 0 && coef <= 20)) return { error: "Coefficient invalide (entre 0,1 et 20)" };
+    out.push(grade);
+  }
+  return { grades: out };
+}
+
+function readPrefs(p) {
+  return {
+    onNew: !!p?.onNew,
+    daily: !!p?.daily,
+    weekly: !!p?.weekly,
+    before: Array.isArray(p?.before) ? REMINDERS.filter((d) => p.before.map(Number).includes(d)) : [],
+  };
+}
+
+const publicProfile = (p) => ({
+  id: p.id, name: p.name, done: p.done || [], grades: p.grades || [], prefs: p.prefs || readPrefs({}),
+  pushDevices: (p.subs || []).length,
+});
+
+async function notifyNewEvent(ev, authorId) {
+  if (!pushReady()) return;
+  const all = await listAll(profiles());
+  await Promise.all(all
+    .filter((p) => p.id !== authorId && p.prefs?.onNew && p.subs?.length)
+    .map((p) => sendPush(p, { title: `Nouveau : ${KINDS[ev.kind].label.toLowerCase()}`, body: `${describe(ev)} · ${frDate(ev.date)}`, url: `/?event=${ev.id}`, tag: `new-${ev.id}` })));
+}
+
+async function handleProfile(req, url, id, method) {
+  if (id === "check" && method === "POST") {
+    const { name } = await req.json().catch(() => ({}));
+    const pid = profileId(name);
+    if (!pid) return json({ error: "Écris ton prénom" }, 400);
+    return json({ exists: !!(await profiles().get(pid, { type: "json" })) });
+  }
+
+  if (id === "login" && method === "POST") {
+    const body = await req.json().catch(() => ({}));
+    const cookies = [];
+    if (!isAuthed(req)) {
+      if (!password() || !safeEqual(String(body.password || ""), password())) return json({ error: "Mot de passe de la classe incorrect" }, 401);
+      cookies.push(cookie(COOKIE, token(), COOKIE_AGE));
+    }
+    if (!profileSecret()) return json({ error: "Comptes non configurés" }, 501);
+    const name = cleanName(body.name);
+    const pid = profileId(name);
+    const pin = String(body.pin || "");
+    if (!pid) return json({ error: "Écris ton prénom" }, 400);
+    if (!/^\d{6}$/.test(pin)) return json({ error: "Le code perso fait 6 chiffres" }, 400);
+
+    let profile = await profiles().get(pid, { type: "json" });
+    if (!profile) {
+      if (!body.create) return json({ error: "Aucun compte à ce prénom" }, 404);
+      const salt = randomBytes(16).toString("hex");
+      profile = {
+        id: pid, name, salt, pinHash: hashPin(pin, salt), createdAt: new Date().toISOString(),
+        failed: 0, lockedUntil: 0, done: [], grades: [], prefs: readPrefs({}), subs: [],
+      };
+      await profiles().setJSON(pid, profile);
+    } else {
+      if (profile.lockedUntil > Date.now()) {
+        const min = Math.ceil((profile.lockedUntil - Date.now()) / 60000);
+        return json({ error: `Trop d'essais : réessaie dans ${min} min` }, 429);
+      }
+      if (!safeEqual(hashPin(pin, profile.salt), profile.pinHash)) {
+        profile.failed = (profile.failed || 0) + 1;
+        if (profile.failed >= MAX_FAILS) { profile.failed = 0; profile.lockedUntil = Date.now() + LOCK_MS; }
+        await profiles().setJSON(pid, profile);
+        const left = MAX_FAILS - profile.failed;
+        return json({ error: profile.lockedUntil > Date.now() ? "Trop d'essais : compte bloqué 15 min" : `Code incorrect (encore ${left} essai${left > 1 ? "s" : ""})` }, 401);
+      }
+      if (profile.failed) { profile.failed = 0; await profiles().setJSON(pid, profile); }
+    }
+    cookies.push(cookie(PROFILE_COOKIE, encodeURIComponent(`${pid}.${profileToken(pid)}`), COOKIE_AGE));
+    return json(publicProfile(profile), 200, cookies);
+  }
+
+  if (id === "logout" && method === "POST") {
+    return json({ ok: true }, 200, [cookie(PROFILE_COOKIE, "", 0)]);
+  }
+
+  const pid = currentProfileId(req);
+  if (!pid) return json({ error: "Connecte-toi à ton compte" }, 401);
+  const profile = await profiles().get(pid, { type: "json" });
+  if (!profile) return json({ error: "Compte introuvable" }, 401, [cookie(PROFILE_COOKIE, "", 0)]);
+
+  if (!id && method === "GET") return json(publicProfile(profile));
+
+  const body = method === "GET" ? {} : await req.json().catch(() => ({}));
+  if (id === "done" && method === "PUT") {
+    const eid = String(body.event || "");
+    const done = new Set(profile.done || []);
+    if (body.done) done.add(eid); else done.delete(eid);
+    profile.done = [...done].slice(-3000);
+  } else if (id === "grades" && method === "PUT") {
+    const { grades, error } = readGrades(body.grades);
+    if (error) return json({ error }, 400);
+    profile.grades = grades;
+  } else if (id === "prefs" && method === "PUT") {
+    profile.prefs = readPrefs(body.prefs);
+  } else if (id === "push" && method === "POST") {
+    const sub = body.subscription;
+    if (!sub?.endpoint || !/^https:\/\//.test(sub.endpoint) || !sub.keys?.p256dh || !sub.keys?.auth) return json({ error: "Abonnement invalide" }, 400);
+    profile.subs = [...(profile.subs || []).filter((s) => s.endpoint !== sub.endpoint), { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } }].slice(-10);
+  } else if (id === "push" && method === "DELETE") {
+    profile.subs = (profile.subs || []).filter((s) => s.endpoint !== body.endpoint);
+  } else if (id === "push-test" && method === "POST") {
+    const sent = await sendPush(profile, { title: "Agenda DCG", body: "Les notifications fonctionnent sur cet appareil.", url: "/" });
+    return json({ sent });
+  } else {
+    return json({ error: "Introuvable" }, 404);
+  }
+  await profiles().setJSON(pid, profile);
+  return json(publicProfile(profile));
+}
+
 export default async (req) => {
   const url = new URL(req.url);
   const [resource, id] = url.pathname.replace(/^\/api\/?/, "").split("/").filter(Boolean);
   const method = req.method;
 
-  if (resource === "login" && method === "POST") {
-    const { password: pw } = await req.json().catch(() => ({}));
-    if (!password() || !safeEqual(String(pw || ""), password())) return json({ error: "Mot de passe incorrect" }, 401);
-    return json({ ok: true }, 200, {
-      "set-cookie": `${COOKIE}=${token()}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${60 * 60 * 24 * 180}`,
-    });
+  if (resource === "push-key" && method === "GET") {
+    return json({ key: pushReady() ? Netlify.env.get("PUSH_PUBLIC_KEY") : null });
+  }
+
+  if (resource === "profile" && (id === "check" || id === "login" || id === "logout")) {
+    return handleProfile(req, url, id, method);
   }
 
   if (resource === "logout" && method === "POST") {
-    return json({ ok: true }, 200, { "set-cookie": `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0` });
+    return json({ ok: true }, 200, [cookie(COOKIE, "", 0), cookie(PROFILE_COOKIE, "", 0)]);
   }
 
   if (!isAuthed(req)) return json({ error: "Non connecté" }, 401);
 
   if (resource === "me") return json({ ok: true });
+
+  if (resource === "profile") return handleProfile(req, url, id, method);
 
   if (resource === "usage" && method === "GET") {
     if (!r2Enabled()) return json({ error: "Stockage R2 non configuré" }, 501);
@@ -134,15 +287,16 @@ export default async (req) => {
       const now = new Date().toISOString();
       const full = {
         id: randomUUID(), ...ev, createdBy: by, createdAt: now, updatedBy: by, updatedAt: now,
-        history: [{ by, at: now, action: `a créé ${KINDS[ev.kind]}` }],
+        history: [{ by, at: now, action: `a créé ${KINDS[ev.kind].article}` }],
       };
       await events().setJSON(full.id, full);
+      if (KINDS[full.kind].deadline) await notifyNewEvent(full, currentProfileId(req)).catch(() => {});
       return json(full, 201);
     }
 
     if (!id) return json({ error: "Introuvable" }, 404);
     const existing = await events().get(id, { type: "json" });
-    if (!existing) return json({ error: "Éval introuvable" }, 404);
+    if (!existing) return json({ error: "Événement introuvable" }, 404);
 
     if (method === "GET") return json(existing);
 
@@ -152,7 +306,7 @@ export default async (req) => {
       if (!by) return json({ error: "Ton nom est obligatoire" }, 400);
       const { ev, error } = await readEventFields(body);
       if (error) return json({ error }, 400);
-      const updated = stamp({ ...existing, ...ev }, by, `a modifié ${KINDS[ev.kind]}`);
+      const updated = stamp({ ...existing, ...ev }, by, `a modifié ${KINDS[ev.kind].article}`);
       await events().setJSON(id, updated);
       return json(updated);
     }

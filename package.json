@@ -6,6 +6,7 @@
     "dev": "netlify dev"
   },
   "dependencies": {
-    "@netlify/blobs": "^8.1.0"
+    "@netlify/blobs": "^8.1.0",
+    "web-push": "^4.0.0"
   }
 }

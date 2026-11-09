@@ -43,8 +43,8 @@ Un style Calendrier d'Apple, disponible sur iPhone, Mac, Windows et dans le navi
 <tr>
 <td width="50%" valign="top">
 
-### 📅 Un vrai calendrier
-Vue du mois façon Apple, pastilles de couleur par éval, liste du jour et prochaines évals. Sur iPhone, on change de mois en balayant l'écran.
+### 📅 Un vrai agenda
+Vue mois et vue semaine : on passe de l'une à l'autre en pinçant l'écran, on glisse de semaine en semaine, et on choisit directement le mois en touchant son nom. Les jours fériés sont indiqués. Évaluations, examens blancs, devoirs, exercices, cours et révisions ont chacun leur icône.
 
 </td>
 <td width="50%" valign="top">
@@ -57,8 +57,8 @@ Les PDF sont rangés par matière, puis par chapitre. Chaque chapitre a sa fiche
 <tr>
 <td valign="top">
 
-### 👥 Pensé pour la classe
-Un seul mot de passe pour toute la classe. Chacun indique son prénom, et l'historique montre qui a créé, modifié ou ajouté quoi.
+### 👥 Partagé, avec un espace privé
+L'agenda et les cours sont communs à la classe (un mot de passe de classe). Chacun a aussi son compte, protégé par un code perso à 6 chiffres, pour ses notes, ce qu'il a déjà fait et ses rappels, sur tous ses appareils.
 
 </td>
 <td valign="top">
@@ -96,6 +96,31 @@ Envoie des photos PNG ou JPG, par exemple le tableau ou des notes prises au tél
 
 </td>
 </tr>
+<tr>
+<td valign="top">
+
+### ☀️ Aujourd'hui
+En ouvrant l'appli : ce qui est prévu aujourd'hui, ce qui est en retard et les prochaines échéances. On coche ce qui est fait.
+
+</td>
+<td valign="top">
+
+### 📈 Carnet de notes
+Moyennes par matière, graphique d'évolution et simulateur « quelle note me faut-il au prochain contrôle ». Moyennes indicatives, pas les règles officielles du DCG.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### 🔔 Notifications
+Chacun choisit : à chaque nouvelle évaluation, chaque matin, chaque dimanche, et des rappels 1 jour, 2 jours ou 1 semaine avant. Sur iPhone, après avoir ajouté l'agenda à l'écran d'accueil.
+
+</td>
+<td valign="top">
+
+</td>
+</tr>
 </table>
 
 ## Installation
@@ -107,7 +132,7 @@ Envoie des photos PNG ou JPG, par exemple le tableau ou des notes prises au tél
 | **iPhone** | Ouvre [le site](https://agenda-evals-0885.netlify.app) dans Safari, puis **Partager → Sur l'écran d'accueil**. |
 | **Navigateur** | Va sur **[agenda-evals-0885.netlify.app](https://agenda-evals-0885.netlify.app)**. |
 
-Au premier lancement, l'agenda demande ton prénom et le mot de passe de la classe. Le mot de passe se demande au délégué : il n'est écrit nulle part dans ce dépôt.
+Au premier lancement, l'agenda demande ton prénom et le mot de passe de la classe, puis te fait créer un code perso à 6 chiffres. Sur un autre appareil, ton prénom et ton code suffisent pour retrouver ton compte. Le mot de passe de la classe se demande au délégué : il n'est écrit nulle part dans ce dépôt.
 
 <details>
 <summary><b>macOS dit que l'app « ne peut pas être ouverte » ?</b></summary>
