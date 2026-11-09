@@ -1,5 +1,21 @@
 import { getStore } from "@netlify/blobs";
-import { createHmac, randomUUID } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+
+const COOKIE = "agenda_session";
+const password = () => Netlify.env.get("AGENDA_PASSWORD") || "";
+const token = () => createHmac("sha256", password()).update("agenda-v1").digest("hex");
+
+function safeEqual(a, b) {
+  const x = Buffer.from(a);
+  const y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
+}
+
+function isAuthed(req) {
+  if (!password()) return false;
+  const m = (req.headers.get("cookie") || "").match(new RegExp(`${COOKIE}=([a-f0-9]+)`));
+  return !!m && safeEqual(m[1], token());
+}
 
 const MAX_PDF = 5.5 * 1024 * 1024;
 const MAX_R2_PDF = 100 * 1024 * 1024;
@@ -68,6 +84,33 @@ export default async (req) => {
   const parts = url.pathname.replace(/^\/api\/?/, "").split("/").filter(Boolean);
   const [resource, id] = parts;
   const method = req.method;
+
+  if (resource === "login" && method === "POST") {
+    const { password: pw } = await req.json().catch(() => ({}));
+    if (!password() || !safeEqual(String(pw || ""), password())) {
+      return json({ error: "Mot de passe incorrect" }, 401);
+    }
+    return json({ ok: true }, 200, {
+      "set-cookie": `${COOKIE}=${token()}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${60 * 60 * 24 * 180}`,
+    });
+  }
+
+  if (resource === "logout" && method === "POST") {
+    return json({ ok: true }, 200, { "set-cookie": `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0` });
+  }
+
+  if (!isAuthed(req)) return json({ error: "Non connecté" }, 401);
+
+  if (resource === "me") return json({ ok: true });
+
+  if (resource === "usage" && method === "GET") {
+    if (!r2Enabled()) return json({ error: "Stockage R2 non configuré" }, 501);
+    const exp = Math.floor(Date.now() / 1000) + 60;
+    const sig = createHmac("sha256", signingSecret()).update(`USAGE\nusage\n${exp}`).digest("hex");
+    const res = await fetch(`${workerUrl()}/usage?exp=${exp}&sig=${sig}`);
+    if (!res.ok) return json({ error: "Usage indisponible" }, 502);
+    return json(await res.json());
+  }
 
   if (resource === "events") {
     if (method === "GET" && !id) return json(await listEvents());
@@ -165,7 +208,7 @@ export default async (req) => {
       if (!ev) return json({ error: "Éval introuvable" }, 404);
       if (ev.files.some((f) => f.key === key)) return json(ev);
       const head = await fetch(signedUrl("GET", key, 300), { method: "HEAD" });
-      if (!head.ok) return json({ error: "Le PDF n'a pas été reçu" }, 400);
+      if (!head.ok) return json({ error: head.status === 404 ? "Le PDF n'a pas été reçu" : "Vérification du PDF impossible, réessaie" }, 400);
       const size = Number(head.headers.get("content-length")) || 0;
       if (!name.toLowerCase().endsWith(".pdf")) name += ".pdf";
       await pdfs().setJSON(`r2:${key}`, { name, eventId: ev.id });

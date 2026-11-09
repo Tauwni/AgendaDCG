@@ -82,7 +82,7 @@ input, textarea { font: inherit; color: var(--text); }
 .day + .day { border-left: .5px solid var(--line); }
 .day:nth-child(7n+1) { border-left: 0; }
 .day .num { align-self: flex-end; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; font-size: 15px; margin-bottom: 2px; }
-.day.other { opacity: .35; }
+.day.blank { cursor: default; }
 .day.today .num { color: var(--accent); font-weight: 700; }
 .day.selected .num { background: var(--text); color: var(--bg); font-weight: 700; }
 .day.today.selected .num { background: var(--accent); color: #fff; }
@@ -90,6 +90,11 @@ input, textarea { font: inherit; color: var(--text); }
 .more { font-size: 11px; color: var(--text2); padding-left: 6px; }
 .dots { display: none; justify-content: center; gap: 3px; height: 6px; }
 .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+.month-view { overflow: hidden; }
+.grid { touch-action: pan-y; will-change: transform; }
+.day .num { transition: background-color .25s, color .25s; }
+.day.pop .num { animation: pop .42s cubic-bezier(.32,.72,0,1); }
+@keyframes pop { from { transform: scale(.55); opacity: .4; } }
 
 @media (max-width: 700px) {
   .month-title { font-size: 28px; }
@@ -114,17 +119,28 @@ input, textarea { font: inherit; color: var(--text); }
 .ev .meta { display: flex; gap: 10px; align-items: center; margin-top: 4px; font-size: 13px; color: var(--text2); }
 .ev .meta svg { width: 13px; height: 13px; vertical-align: -2px; }
 .empty { color: var(--text2); padding: 22px 0; text-align: center; font-size: 15px; }
+.list.enter > * { animation: rise .42s cubic-bezier(.32,.72,0,1) backwards; animation-delay: calc(var(--i, 0) * 40ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+.panel h2.enter { animation: rise .35s cubic-bezier(.32,.72,0,1) backwards; }
+.ev, .btn-primary, .btn-row, .icon-btn, .who, .swatch, .file { transition: transform .25s cubic-bezier(.32,.72,0,1), filter .2s, background-color .2s; }
+.ev:active, .btn-primary:active, .btn-row:active, .icon-btn:active, .who:active, .swatch:active { transform: scale(.96); }
+#app.enter { animation: appIn .5s cubic-bezier(.32,.72,0,1); }
+@keyframes appIn { from { opacity: 0; transform: scale(.98); } }
 .upcoming { margin-top: 24px; }
 
 /* Sheet */
-.backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 20; display: flex; align-items: center; justify-content: center; animation: fade .2s; }
-.sheet { background: var(--bg2); width: 100%; max-width: 520px; max-height: 88vh; overflow-y: auto; border-radius: 14px; box-shadow: var(--sheet-shadow); animation: up .25s cubic-bezier(.2,.8,.2,1); }
+.backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 20; display: flex; align-items: center; justify-content: center; }
+.sheet { background: var(--bg2); width: 100%; max-width: 520px; max-height: 88vh; overflow-y: auto; border-radius: 14px; box-shadow: var(--sheet-shadow); overscroll-behavior: contain; }
+.sheet .grabber { display: none; }
 @media (max-width: 700px) {
   .backdrop { align-items: flex-end; }
   .sheet { border-radius: 14px 14px 0 0; max-height: 94vh; padding-bottom: env(safe-area-inset-bottom); }
+  .sheet .grabber { display: block; width: 36px; height: 5px; border-radius: 3px; background: var(--text2); opacity: .45; margin: 7px auto -4px; }
+  .sheet-head { touch-action: none; }
 }
-@keyframes fade { from { opacity: 0; } }
-@keyframes up { from { transform: translateY(30px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; }
+}
 .sheet-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; position: sticky; top: 0; background: var(--bg2); z-index: 1; }
 .sheet-head h3 { font-size: 17px; margin: 0; font-weight: 600; }
 .sheet-head .link { padding: 0; }
@@ -154,7 +170,12 @@ input, textarea { font: inherit; color: var(--text); }
 .upload input { display: none; }
 .history { font-size: 13px; color: var(--text2); padding: 10px 16px; display: flex; flex-direction: column; gap: 4px; }
 .history b { color: var(--text); font-weight: 600; }
-.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 20px; font-size: 14px; z-index: 40; animation: fade .2s; max-width: calc(100% - 32px); }
+.usage { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+.usage-text { font-size: 15px; }
+.usage-bar { height: 6px; border-radius: 3px; background: var(--bg2); overflow: hidden; }
+.usage-bar span { display: block; height: 100%; border-radius: 3px; background: var(--green); transition: width .6s cubic-bezier(.32,.72,0,1); }
+.usage-sub { font-size: 13px; color: var(--text2); }
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 20px; font-size: 14px; z-index: 40; max-width: calc(100% - 32px); }
 .spinner { width: 18px; height: 18px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; vertical-align: -3px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>
@@ -169,6 +190,7 @@ input, textarea { font: inherit; color: var(--text); }
     <p>Les évaluations de la classe et leurs cours</p>
     <div class="group">
       <input id="loginName" placeholder="Ton prénom" autocomplete="given-name" maxlength="40" required>
+      <input id="loginPass" type="password" placeholder="Mot de passe de la classe" autocomplete="current-password" required>
     </div>
     <p style="font-size:13px;margin:10px 0 0">Ton prénom s'affiche sur tes ajouts et modifications.</p>
     <button class="btn-primary" id="loginBtn">Entrer</button>
@@ -188,11 +210,11 @@ input, textarea { font: inherit; color: var(--text); }
       <button class="icon-btn" id="addBtn" aria-label="Nouvelle éval"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
     </div>
   </header>
-  <h1 class="month-title" id="monthTitle"></h1>
+  <div class="month-view"><h1 class="month-title" id="monthTitle"></h1></div>
   <div class="layout">
     <div>
       <div class="weekdays"><div>Lun</div><div>Mar</div><div>Mer</div><div>Jeu</div><div>Ven</div><div>Sam</div><div>Dim</div></div>
-      <div class="grid" id="grid"></div>
+      <div class="month-view" id="gridView"><div class="grid" id="grid"></div></div>
     </div>
     <aside class="panel">
       <h2 id="dayTitle"></h2>
@@ -233,12 +255,19 @@ function toast(msg) {
   const t = document.createElement("div");
   t.className = "toast"; t.textContent = msg;
   document.body.appendChild(t);
-  setTimeout(() => t.remove(), Math.max(2600, msg.length * 70));
+  const motion = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (motion) t.animate([{ transform: "translate(-50%, 20px) scale(.96)", opacity: 0 }, { transform: "translate(-50%, 0)", opacity: 1 }], { duration: 420, easing: "cubic-bezier(.32,.72,0,1)" });
+  setTimeout(() => {
+    if (!motion) return t.remove();
+    t.animate([{ opacity: 1 }, { transform: "translate(-50%, 10px)", opacity: 0 }], { duration: 220, easing: "ease-in", fill: "forwards" });
+    setTimeout(() => t.remove(), 240);
+  }, Math.max(2600, msg.length * 70));
 }
 
 async function api(path, opts = {}) {
   const res = await fetch("/api/" + path, opts);
   const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && path !== "login") { showLogin(); throw new Error("Session expirée"); }
   if (!res.ok) { const err = new Error(data.error || "Erreur"); err.status = res.status; throw err; }
   return data;
 }
@@ -293,7 +322,9 @@ $("#loginForm").addEventListener("submit", async (e) => {
   if (!name) return;
   $("#loginBtn").disabled = true; $("#loginErr").textContent = "";
   try {
+    await api("login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: $("#loginPass").value }) });
     setName(name);
+    $("#loginPass").value = "";
     await start();
   } catch (err) { $("#loginErr").textContent = err.message; }
   $("#loginBtn").disabled = false;
@@ -302,8 +333,10 @@ $("#loginForm").addEventListener("submit", async (e) => {
 async function start() {
   if (!getName()) return showLogin();
   state.events = await api("events");
+  const wasHidden = $("#app").classList.contains("hidden");
   $("#login").classList.add("hidden");
   $("#app").classList.remove("hidden");
+  if (wasHidden) { $("#app").classList.remove("enter"); void $("#app").offsetWidth; $("#app").classList.add("enter"); }
   renderWho(); render();
 }
 
@@ -319,31 +352,98 @@ function byDate() {
   return m;
 }
 
-function render() {
+const EASE = "cubic-bezier(.32,.72,0,1)";
+const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function renderGrid() {
   const map = byDate();
   const m = state.month;
   $("#monthTitle").innerHTML = `${MONTHS[m.getMonth()]} <span>${m.getFullYear()}</span>`;
-  const start = new Date(m); start.setDate(1 - ((m.getDay() + 6) % 7));
+  const lead = (m.getDay() + 6) % 7;
+  const days = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
+  const cells = Math.ceil((lead + days) / 7) * 7;
   const today = iso(new Date());
   let html = "";
-  for (let i = 0; i < 42; i++) {
-    const d = new Date(start); d.setDate(start.getDate() + i);
+  for (let i = 0; i < cells; i++) {
+    const n = i - lead + 1;
+    if (n < 1 || n > days) { html += `<div class="day blank" aria-hidden="true"></div>`; continue; }
+    const d = new Date(m.getFullYear(), m.getMonth(), n);
     const key = iso(d);
     const evs = map[key] || [];
-    const cls = ["day", d.getMonth() !== m.getMonth() && "other", key === today && "today", key === state.selected && "selected", d.getDay() % 6 === 0 && "weekend"].filter(Boolean).join(" ");
+    const cls = ["day", key === today && "today", key === state.selected && "selected", d.getDay() % 6 === 0 && "weekend"].filter(Boolean).join(" ");
     const pills = evs.slice(0, 3).map((e) => `<div class="pill" style="--c:${col(e.color)}">${esc(e.title)}</div>`).join("");
     const more = evs.length > 3 ? `<div class="more">+${evs.length - 3} autre${evs.length > 4 ? "s" : ""}</div>` : "";
     const dots = evs.slice(0, 3).map((e) => `<span class="dot" style="--c:${col(e.color)}"></span>`).join("");
-    html += `<button class="${cls}" data-date="${key}" aria-label="${longDate(key)}, ${evs.length} éval(s)"><span class="num">${d.getDate()}</span>${pills}${more}<span class="dots">${dots}</span></button>`;
+    html += `<button class="${cls}" data-date="${key}" aria-label="${longDate(key)}, ${evs.length} éval(s)"><span class="num">${n}</span>${pills}${more}<span class="dots">${dots}</span></button>`;
   }
   $("#grid").innerHTML = html;
+}
 
+function renderPanel(animate) {
+  const map = byDate();
+  const today = iso(new Date());
   const sel = map[state.selected] || [];
   $("#dayTitle").innerHTML = `<small>${state.selected === today ? "Aujourd'hui" : DAYS[parse(state.selected).getDay()]}</small>${parse(state.selected).getDate()} ${MONTHS[parse(state.selected).getMonth()]}`;
   $("#dayList").innerHTML = sel.length ? sel.map((e) => evCard(e)).join("") : `<div class="empty">Aucune éval ce jour-là</div>`;
-
   const upcoming = state.events.filter((e) => e.date >= today).slice(0, 6);
   $("#upcomingList").innerHTML = upcoming.length ? upcoming.map((e) => evCard(e, true)).join("") : `<div class="empty">Rien de prévu</div>`;
+  for (const list of [$("#dayList"), $("#upcomingList")]) {
+    [...list.children].forEach((c, i) => c.style.setProperty("--i", i));
+  }
+  if (animate) {
+    for (const el of [$("#dayTitle"), $("#dayList")]) {
+      el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter");
+    }
+  }
+}
+
+function render() { renderGrid(); renderPanel(false); }
+
+function selectDay(date) {
+  if (date === state.selected) return;
+  $("#grid .day.selected")?.classList.remove("selected", "pop");
+  state.selected = date;
+  const cell = $(`#grid .day[data-date="${date}"]`);
+  if (cell) { cell.classList.add("selected", "pop"); }
+  renderPanel(true);
+}
+
+let monthAnim = 0;
+let pendingMonth = null;
+function changeMonth(dir, opts = {}) {
+  const base = pendingMonth || state.month;
+  const target = new Date(base.getFullYear(), base.getMonth() + dir, 1);
+  const id = ++monthAnim;
+  const grid = $("#grid"), title = $("#monthTitle"), view = $("#gridView");
+  const stopAll = () => [grid, title, view].forEach((el) => el.getAnimations().forEach((a) => a.cancel()));
+  const apply = () => {
+    pendingMonth = null;
+    state.month = target;
+    const now = new Date();
+    const isCurrent = target.getFullYear() === now.getFullYear() && target.getMonth() === now.getMonth();
+    state.selected = opts.select || (isCurrent ? iso(now) : iso(target));
+    renderGrid(); renderPanel(true);
+  };
+  stopAll();
+  if (reducedMotion()) { apply(); return; }
+
+  pendingMonth = target;
+  const w = grid.offsetWidth || 1;
+  const sd = Math.sign(dir);
+  const from = opts.fromX || 0;
+  const h0 = view.offsetHeight;
+  grid.animate([{ transform: `translateX(${from}px)`, opacity: 1 - Math.min(Math.abs(from) / w, .6) }, { transform: `translateX(${-sd * w * .35}px)`, opacity: 0 }], { duration: 170, easing: "cubic-bezier(.4,0,1,1)", fill: "forwards" });
+  title.animate([{ opacity: 1 }, { opacity: 0, transform: `translateX(${-sd * 16}px)` }], { duration: 170, easing: "ease-in", fill: "forwards" });
+
+  setTimeout(() => {
+    if (id !== monthAnim) return;
+    stopAll();
+    apply();
+    const h1 = view.offsetHeight;
+    if (h0 !== h1) view.animate([{ height: `${h0}px` }, { height: `${h1}px` }], { duration: 380, easing: EASE });
+    grid.animate([{ transform: `translateX(${sd * w * .35}px)`, opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 420, easing: EASE });
+    title.animate([{ opacity: 0, transform: `translateX(${sd * 16}px)` }, { opacity: 1, transform: "none" }], { duration: 420, easing: EASE });
+  }, 170);
 }
 
 const clip = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.1l-9.2 9.2a6 6 0 01-8.5-8.5l9.2-9.2a4 4 0 015.7 5.7l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5"/></svg>`;
@@ -357,17 +457,18 @@ function evCard(e, withDate) {
 }
 
 $("#grid").addEventListener("click", (e) => {
-  const b = e.target.closest(".day"); if (!b) return;
-  state.selected = b.dataset.date;
-  const d = parse(b.dataset.date);
-  if (d.getMonth() !== state.month.getMonth()) state.month = firstOfMonth(d);
-  render();
+  const b = e.target.closest(".day[data-date]"); if (b) selectDay(b.dataset.date);
 });
-$("#grid").addEventListener("dblclick", (e) => { const b = e.target.closest(".day"); if (b) openEdit(null, b.dataset.date); });
+$("#grid").addEventListener("dblclick", (e) => { const b = e.target.closest(".day[data-date]"); if (b) openEdit(null, b.dataset.date); });
 document.addEventListener("click", (e) => { const b = e.target.closest(".ev"); if (b) openDetail(b.dataset.id); });
-$("#prev").onclick = () => { state.month = new Date(state.month.getFullYear(), state.month.getMonth() - 1, 1); render(); };
-$("#next").onclick = () => { state.month = new Date(state.month.getFullYear(), state.month.getMonth() + 1, 1); render(); };
-$("#todayBtn").onclick = () => { state.month = firstOfMonth(new Date()); state.selected = iso(new Date()); render(); };
+$("#prev").onclick = () => changeMonth(-1);
+$("#next").onclick = () => changeMonth(1);
+$("#todayBtn").onclick = () => {
+  const now = new Date();
+  const diff = (now.getFullYear() - state.month.getFullYear()) * 12 + now.getMonth() - state.month.getMonth();
+  if (diff === 0) return selectDay(iso(now));
+  changeMonth(Math.sign(diff) * Math.abs(diff), { select: iso(now) });
+};
 $("#addBtn").onclick = () => openEdit(null, state.selected);
 $("#whoBtn").onclick = () => {
   const bd = openSheet(`
@@ -379,30 +480,126 @@ $("#whoBtn").onclick = () => {
     <div class="sheet-body">
       <div class="group"><input name="who" maxlength="40" value="${esc(getName())}" placeholder="Ton prénom"></div>
       <div class="label" style="margin-top:-8px">Affiché sur tes ajouts et modifications.</div>
+      <div>
+        <div class="label">Stockage des cours</div>
+        <div class="group usage" id="usageBox"><div class="usage-text">Chargement…</div></div>
+      </div>
+      <button class="btn-row" data-act="logout">Se déconnecter</button>
     </div>`);
+  api("usage").then((u) => {
+    const gb = (n) => (n / 1e9).toLocaleString("fr-FR", { maximumFractionDigits: 2 });
+    const pct = Math.min(100, (u.bytes / u.limits.bytes) * 100);
+    const box = bd.querySelector("#usageBox");
+    if (!box) return;
+    box.innerHTML = `
+      <div class="usage-text"><b>${gb(u.bytes)} Go</b> utilisés sur ${gb(u.limits.bytes)} Go</div>
+      <div class="usage-bar"><span style="width:${pct.toFixed(1)}%;${pct > 85 ? "background:var(--accent)" : ""}"></span></div>
+      <div class="usage-sub">Ce mois-ci : ${u.classA.toLocaleString("fr-FR")} envois et ${u.classB.toLocaleString("fr-FR")} lectures. Les envois sont bloqués avant de dépasser le forfait gratuit.</div>`;
+  }).catch(() => { const box = bd.querySelector("#usageBox"); if (box) box.innerHTML = `<div class="usage-text">Indisponible</div>`; });
   const input = bd.querySelector("[name=who]");
   const save = () => { const n = input.value.trim(); if (!n) return toast("Ajoute ton prénom"); setName(n.slice(0, 40)); closeSheet(); };
   bd.querySelector("[data-act=cancel]").onclick = closeSheet;
   bd.querySelector("[data-act=save]").onclick = save;
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") save(); });
+  bd.querySelector("[data-act=logout]").onclick = async () => { await api("logout", { method: "POST" }).catch(() => {}); closeSheet(); showLogin(); };
   input.focus(); input.select();
 };
 
-let touchX = null;
-$("#grid").addEventListener("touchstart", (e) => { touchX = e.touches[0].clientX; }, { passive: true });
-$("#grid").addEventListener("touchend", (e) => {
-  if (touchX === null) return;
-  const dx = e.changedTouches[0].clientX - touchX; touchX = null;
-  if (Math.abs(dx) > 60) (dx < 0 ? $("#next") : $("#prev")).click();
+const swipe = { x: 0, y: 0, dx: 0, active: false, locked: null };
+$("#grid").addEventListener("touchstart", (e) => {
+  Object.assign(swipe, { x: e.touches[0].clientX, y: e.touches[0].clientY, dx: 0, active: true, locked: null });
+}, { passive: true });
+$("#grid").addEventListener("touchmove", (e) => {
+  if (!swipe.active) return;
+  const dx = e.touches[0].clientX - swipe.x;
+  const dy = e.touches[0].clientY - swipe.y;
+  if (swipe.locked === null && Math.hypot(dx, dy) > 8) swipe.locked = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+  if (swipe.locked !== "x") return;
+  swipe.dx = dx;
+  const grid = $("#grid");
+  grid.style.transform = `translateX(${dx}px)`;
+  grid.style.opacity = String(1 - Math.min(Math.abs(dx) / grid.offsetWidth, .5));
+}, { passive: true });
+$("#grid").addEventListener("touchend", () => {
+  if (!swipe.active) return;
+  swipe.active = false;
+  const grid = $("#grid");
+  const dx = swipe.dx;
+  if (swipe.locked !== "x") return;
+  grid.style.transform = ""; grid.style.opacity = "";
+  if (Math.abs(dx) > Math.min(80, grid.offsetWidth * .2)) {
+    changeMonth(dx < 0 ? 1 : -1, { fromX: dx });
+  } else if (!reducedMotion()) {
+    grid.animate([{ transform: `translateX(${dx}px)` }, { transform: "none" }], { duration: 380, easing: EASE });
+  }
 });
 
+const isPhone = () => matchMedia("(max-width: 700px)").matches;
+
 function openSheet(html) {
-  $("#sheetRoot").innerHTML = `<div class="backdrop"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
-  const bd = $("#sheetRoot .backdrop");
+  const current = $("#sheetRoot .backdrop:not(.closing)");
+  if (current) {
+    const sheet = current.querySelector(".sheet");
+    const h0 = sheet.offsetHeight;
+    sheet.innerHTML = `<div class="grabber"></div>${html}`;
+    sheet.scrollTop = 0;
+    bindSheetDrag(current);
+    if (!reducedMotion()) {
+      const h1 = sheet.offsetHeight;
+      sheet.animate([{ height: `${h0}px` }, { height: `${h1}px` }], { duration: 380, easing: EASE });
+      [...sheet.children].forEach((c) => c.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: "ease-out" }));
+    }
+    return current;
+  }
+  $("#sheetRoot").insertAdjacentHTML("beforeend", `<div class="backdrop"><div class="sheet" role="dialog" aria-modal="true"><div class="grabber"></div>${html}</div></div>`);
+  const bd = $("#sheetRoot .backdrop:not(.closing)");
   bd.addEventListener("click", (e) => { if (e.target === bd) closeSheet(); });
+  bindSheetDrag(bd);
+  if (!reducedMotion()) {
+    const sheet = bd.querySelector(".sheet");
+    bd.animate([{ backgroundColor: "rgba(0,0,0,0)" }, { backgroundColor: "rgba(0,0,0,.35)" }], { duration: 350, easing: "ease-out" });
+    sheet.animate(isPhone()
+      ? [{ transform: "translateY(100%)" }, { transform: "none" }]
+      : [{ transform: "scale(.94)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: isPhone() ? 480 : 340, easing: EASE });
+  }
   return bd;
 }
-function closeSheet() { $("#sheetRoot").innerHTML = ""; }
+
+function closeSheet(dragged) {
+  const fromY = typeof dragged === "number" ? dragged : 0;
+  const bd = $("#sheetRoot .backdrop:not(.closing)");
+  if (!bd) return;
+  bd.classList.add("closing");
+  if (reducedMotion()) { bd.remove(); return; }
+  const sheet = bd.querySelector(".sheet");
+  const d = isPhone() ? 320 : 200;
+  sheet.animate(isPhone()
+    ? [{ transform: `translateY(${fromY}px)` }, { transform: "translateY(100%)" }]
+    : [{ transform: "none", opacity: 1 }, { transform: "scale(.96)", opacity: 0 }], { duration: d, easing: isPhone() ? EASE : "ease-in", fill: "forwards" });
+  bd.animate([{ backgroundColor: "rgba(0,0,0,.35)" }, { backgroundColor: "rgba(0,0,0,0)" }], { duration: d, easing: "ease-out", fill: "forwards" });
+  setTimeout(() => bd.remove(), d + 20);
+}
+
+function bindSheetDrag(bd) {
+  const sheet = bd.querySelector(".sheet");
+  const handles = [sheet.querySelector(".grabber"), sheet.querySelector(".sheet-head")].filter(Boolean);
+  let y0 = null, dy = 0;
+  for (const h of handles) {
+    h.addEventListener("touchstart", (e) => { if (e.target.closest("button")) return; y0 = e.touches[0].clientY; dy = 0; }, { passive: true });
+    h.addEventListener("touchmove", (e) => {
+      if (y0 === null) return;
+      dy = Math.max(0, e.touches[0].clientY - y0);
+      sheet.style.transform = `translateY(${dy}px)`;
+    }, { passive: true });
+    h.addEventListener("touchend", () => {
+      if (y0 === null) return;
+      y0 = null;
+      sheet.style.transform = "";
+      if (dy > 110) closeSheet(dy);
+      else if (dy > 0) sheet.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 380, easing: EASE });
+    });
+  }
+}
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
 
 function upsert(ev) {
@@ -557,7 +754,7 @@ function openDetail(id) {
   };
 }
 
-start().catch((err) => toast(err.message));
+api("me").then(start).catch(() => showLogin());
 </script>
 </body>
 </html>

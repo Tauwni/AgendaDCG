@@ -6,3 +6,11 @@ workers_dev = true
 [[r2_buckets]]
 binding = "PDFS"
 bucket_name = "agenda-dcg-pdfs"
+
+[[durable_objects.bindings]]
+name = "USAGE"
+class_name = "Usage"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Usage"]

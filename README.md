@@ -58,7 +58,7 @@ Chaque éval peut avoir un ou plusieurs PDF, jusqu'à 100 Mo chacun. On les ouvr
 <td valign="top">
 
 ### 👥 Pensé pour la classe
-Pas de compte ni de mot de passe : chacun indique juste son prénom, et l'historique montre qui a créé, modifié ou ajouté quoi.
+Un seul mot de passe pour toute la classe. Chacun indique son prénom, et l'historique montre qui a créé, modifié ou ajouté quoi.
 
 </td>
 <td valign="top">
@@ -71,8 +71,8 @@ Le site, l'app Mac, l'app Windows et l'iPhone utilisent les mêmes données. Une
 <tr>
 <td valign="top">
 
-### 🌙 Clair et sombre
-L'interface suit le thème de l'appareil, avec les couleurs et la typographie d'iOS et de macOS.
+### 🌙 Clair, sombre et fluide
+L'interface suit le thème de l'appareil, avec les couleurs, la typographie et les animations d'iOS et de macOS : mois qui glissent sous le doigt, fenêtres qu'on ferme en les tirant vers le bas.
 
 </td>
 <td valign="top">
@@ -107,7 +107,7 @@ Envoie des photos PNG ou JPG, par exemple le tableau ou des notes prises au tél
 | **iPhone** | Ouvre [le site](https://agenda-evals-0885.netlify.app) dans Safari, puis **Partager → Sur l'écran d'accueil**. |
 | **Navigateur** | Va sur **[agenda-evals-0885.netlify.app](https://agenda-evals-0885.netlify.app)**. |
 
-Au premier lancement, l'agenda demande juste ton prénom.
+Au premier lancement, l'agenda demande ton prénom et le mot de passe de la classe. Le mot de passe se demande au délégué : il n'est écrit nulle part dans ce dépôt.
 
 <details>
 <summary><b>macOS dit que l'app « ne peut pas être ouverte » ?</b></summary>
@@ -170,7 +170,9 @@ Les apps Mac et Windows sont des fenêtres [Electron](https://www.electronjs.org
 | API | [Netlify Functions](https://docs.netlify.com/functions/overview/) (Node.js) |
 | Stockage | [Netlify Blobs](https://docs.netlify.com/blobs/overview/) pour les évals, [Cloudflare R2](https://developers.cloudflare.com/r2/) pour les PDF |
 | PDF | [Cloudflare Worker](https://developers.cloudflare.com/workers/) avec liens signés (HMAC) |
+| Connexion | Mot de passe partagé, cookie de session `HttpOnly` signé |
 | Compression et conversion | [pdf-lib](https://pdf-lib.js.org/) et Canvas, directement dans le navigateur |
+| Garde-fou gratuit | [Durable Object](https://developers.cloudflare.com/durable-objects/) qui compte le stockage et les opérations R2 |
 | Apps de bureau | [Electron](https://www.electronjs.org/) et [electron-builder](https://www.electron.build/) |
 | Builds | [GitHub Actions](https://github.com/Tauwni/AgendaDCG/actions) sur macOS et Windows |
 
@@ -268,6 +270,15 @@ AgendaDCG/
 ## Limites
 
 - Un PDF ne peut pas dépasser **100 Mo** (limite d'envoi des Workers Cloudflare gratuits).
+- Pour que l'agenda reste **toujours gratuit**, le Worker bloque avant de dépasser le forfait gratuit de Cloudflare R2 :
+
+  | | Forfait gratuit | Blocage à |
+  | --- | --- | --- |
+  | Stockage | 10 Go | 9,5 Go : envois refusés jusqu'à ce qu'on supprime des PDF |
+  | Envois | 1 million par mois | 950 000 : envois refusés jusqu'au 1er du mois |
+  | Lectures | 10 millions par mois | 9,5 millions : ouverture des PDF refusée jusqu'au 1er du mois |
+
+  L'espace utilisé s'affiche dans l'agenda, en touchant son prénom en haut à droite.
 - Il faut internet : l'agenda ne fonctionne pas hors ligne.
 
 ## Licence
