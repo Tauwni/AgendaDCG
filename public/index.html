@@ -37,7 +37,7 @@
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; background: var(--bg); color: var(--text); }
-html { touch-action: manipulation; }
+html { touch-action: manipulation; overscroll-behavior-x: none; }
 button, .grid, .weekdays, .topbar, .month-title { -webkit-user-select: none; user-select: none; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
@@ -1064,14 +1064,47 @@ wrapEl.addEventListener("touchend", (e) => {
   else if (!reducedMotion()) vp.animate([{ transform: `translateX(${dx}px)` }, { transform: "none" }], { duration: 380, easing: EASE });
 });
 let wheelZoom = 0, wheelTimer;
+// After a switch, macOS keeps sending momentum wheel events: ignore them until they stop.
+const trackpad = { dx: 0, active: false, committed: false, timer: null };
+const TRACKPAD_COMMIT = 120;
+function endTrackpadSwipe() {
+  const vp = $("#viewport");
+  const dx = trackpad.dx;
+  const committed = trackpad.committed;
+  Object.assign(trackpad, { dx: 0, active: false, committed: false, timer: null });
+  if (committed) return;
+  vp.style.transform = ""; vp.style.opacity = "";
+  if (dx && !reducedMotion()) vp.animate([{ transform: `translateX(${dx}px)` }, { transform: "none" }], { duration: 380, easing: EASE });
+}
 wrapEl.addEventListener("wheel", (e) => {
-  if (!e.ctrlKey) return;
+  if (e.ctrlKey) {
+    e.preventDefault();
+    wheelZoom += e.deltaY;
+    clearTimeout(wheelTimer);
+    wheelTimer = setTimeout(() => { wheelZoom = 0; }, 250);
+    if (wheelZoom < -40 && state.view === "month") { wheelZoom = 0; setView("week"); }
+    if (wheelZoom > 40 && state.view === "week") { wheelZoom = 0; setView("month"); }
+    return;
+  }
+  const horizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+  if (!trackpad.active && !horizontal) return;
   e.preventDefault();
-  wheelZoom += e.deltaY;
-  clearTimeout(wheelTimer);
-  wheelTimer = setTimeout(() => { wheelZoom = 0; }, 250);
-  if (wheelZoom < -40 && state.view === "month") { wheelZoom = 0; setView("week"); }
-  if (wheelZoom > 40 && state.view === "week") { wheelZoom = 0; setView("month"); }
+  clearTimeout(trackpad.timer);
+  trackpad.timer = setTimeout(endTrackpadSwipe, 160);
+  trackpad.active = true;
+  if (trackpad.committed) return;
+  const unit = e.deltaMode === 1 ? 16 : 1;
+  trackpad.dx -= e.deltaX * unit;
+  const vp = $("#viewport");
+  const shown = trackpad.dx * 0.7;
+  if (Math.abs(trackpad.dx) >= TRACKPAD_COMMIT) {
+    trackpad.committed = true;
+    vp.style.transform = ""; vp.style.opacity = "";
+    nav(trackpad.dx < 0 ? 1 : -1, { fromX: shown });
+    return;
+  }
+  vp.style.transform = `translateX(${shown}px)`;
+  vp.style.opacity = String(1 - Math.min(Math.abs(shown) / (vp.offsetWidth || 1), .5));
 }, { passive: false });
 
 function openMonthPicker() {
