@@ -172,6 +172,54 @@ input, textarea { font: inherit; color: var(--text); }
 .upload input { display: none; }
 .history { font-size: 13px; color: var(--text2); padding: 10px 16px; display: flex; flex-direction: column; gap: 4px; }
 .history b { color: var(--text); font-weight: 600; }
+.lib-btn { display: flex; align-items: center; gap: 5px; font-weight: 500; }
+.lib-btn svg { width: 21px; height: 21px; }
+@media (max-width: 480px) { .lib-btn span { display: none; } }
+.segmented { display: grid; grid-template-columns: 1fr 1fr; background: var(--line); border-radius: 9px; padding: 2px; gap: 2px; }
+.segmented button { padding: 7px 0; border-radius: 7px; font-size: 14px; font-weight: 500; transition: background-color .25s, box-shadow .25s; }
+.segmented button.on { background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.12); font-weight: 600; }
+.hint { padding: 12px 16px; font-size: 14px; color: var(--text2); }
+.pick { display: flex; align-items: center; gap: 12px; padding: 11px 16px; cursor: pointer; }
+.pick input { position: absolute; opacity: 0; pointer-events: none; }
+.pick .tick { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--text2); display: grid; place-items: center; flex-shrink: 0; color: #fff; transition: background-color .2s, border-color .2s, transform .25s cubic-bezier(.32,.72,0,1); }
+.pick .tick svg { width: 13px; height: 13px; opacity: 0; transition: opacity .15s; }
+.pick input:checked + .tick { background: var(--accent); border-color: var(--accent); transform: scale(1.06); }
+.pick input:checked + .tick svg { opacity: 1; }
+.pick-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pick-title { font-weight: 500; }
+.pick-sub { font-size: 13px; color: var(--text2); }
+.chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.chip { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 10px; background: var(--bg2); color: var(--text2); display: inline-flex; align-items: center; gap: 3px; }
+.chip.on { background: color-mix(in srgb, var(--green) 18%, transparent); color: var(--green); }
+.chip svg { width: 10px; height: 10px; }
+.search { width: 100%; border: 0; border-radius: 10px; background: var(--line); padding: 10px 14px; outline: none; -webkit-appearance: none; }
+.nav-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 16px; text-align: left; }
+.nav-row:active { background: var(--bg2); }
+.nav-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.nav-body b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-body small { font-size: 13px; color: var(--text2); }
+.folder { color: var(--blue); width: 30px; height: 30px; flex-shrink: 0; }
+.folder svg { width: 30px; height: 30px; }
+.chev { width: 16px; height: 16px; color: var(--text2); opacity: .6; flex-shrink: 0; }
+.folder-title { font-size: 24px; font-weight: 700; margin: 2px 0 0; }
+.link.back { display: flex; align-items: center; gap: 2px; max-width: 45%; }
+.link.back svg { width: 20px; height: 20px; flex-shrink: 0; margin-left: -6px; }
+.back-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kind-badge { display: inline-block; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 10px; margin-bottom: 8px; color: var(--c); background: color-mix(in srgb, var(--c) 15%, transparent); }
+.chapter-card + .chapter-card { margin-top: 10px; }
+.chapter-head { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 12px 16px; text-align: left; gap: 10px; }
+.chapter-head span { display: flex; flex-direction: column; gap: 2px; }
+.chapter-head small { font-size: 13px; color: var(--text2); }
+.ico.ghost { background: transparent; border: 1.5px dashed var(--text2); color: var(--text2); opacity: .7; }
+.file.missing .n-wrap { flex: 1; }
+.file.missing .n { font-weight: 500; }
+.file.missing .m { font-size: 13px; color: var(--text2); }
+.slot-empty { padding: 10px 16px; }
+.slot-text { display: flex; flex-direction: column; gap: 2px; }
+.slot-text b { color: var(--text); font-weight: 500; }
+.slot-text span { font-size: 13px; }
+.mini { font-size: 13px; color: var(--blue); cursor: pointer; padding: 4px 6px; flex-shrink: 0; }
+.mini input { display: none; }
 .usage { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
 .usage-text { font-size: 15px; }
 .usage-bar { height: 6px; border-radius: 3px; background: var(--bg2); overflow: hidden; }
@@ -208,6 +256,7 @@ input, textarea { font: inherit; color: var(--text); }
       <button class="icon-btn" id="next" aria-label="Mois suivant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
     </div>
     <div class="right">
+      <button class="link lib-btn" id="libBtn" aria-label="Bibliothèque des cours"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 015.5 4H10a2 2 0 012 2v14a1.5 1.5 0 00-1.5-1.5h-5A1.5 1.5 0 014 17z"/><path d="M20 5.5A1.5 1.5 0 0018.5 4H14a2 2 0 00-2 2v14a1.5 1.5 0 011.5-1.5h5a1.5 1.5 0 001.5-1.5z"/></svg><span>Cours</span></button>
       <button class="who" id="whoBtn" title="Changer de nom"><span class="avatar" id="avatar"></span><span id="whoName"></span></button>
       <button class="icon-btn" id="addBtn" aria-label="Nouvelle éval"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
     </div>
@@ -237,7 +286,7 @@ const MONTHS = ["janvier","février","mars","avril","mai","juin","juillet","aoû
 const DAYS = ["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"];
 const $ = (s) => document.querySelector(s);
 
-const state = { events: [], month: firstOfMonth(new Date()), selected: iso(new Date()) };
+const state = { events: [], chapters: [], month: firstOfMonth(new Date()), selected: iso(new Date()) };
 
 function iso(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
 function parse(s) { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); }
@@ -276,7 +325,60 @@ async function api(path, opts = {}) {
 
 const MAX_PDF_MB = 100;
 const MAX_INPUT_MB = 300;
-const LEGACY_MAX_PDF = 5.5 * 1024 * 1024;
+const SLOTS = [["cours", "Fiche de cours"], ["sujet", "Sujet type"], ["corrige", "Corrigé du sujet"]];
+const KIND_LABEL = { eval: "Évaluation", exercice: "Exercice" };
+const DCG_UES = [
+  "UE1 · Fondamentaux du droit", "UE2 · Droit des sociétés", "UE3 · Droit social", "UE4 · Droit fiscal",
+  "UE5 · Économie contemporaine", "UE6 · Finance d'entreprise", "UE7 · Management", "UE8 · Systèmes d'information de gestion",
+  "UE9 · Introduction à la comptabilité", "UE10 · Comptabilité approfondie", "UE11 · Contrôle de gestion",
+  "UE12 · Anglais appliqué aux affaires", "UE13 · Communication professionnelle",
+];
+const norm = (s) => String(s || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ");
+const sameSubject = (a, b) => norm(a) === norm(b);
+
+function allSubjects() {
+  const seen = new Map();
+  for (const s of [...DCG_UES, ...state.chapters.map((c) => c.subject), ...state.events.map((e) => e.subject)]) {
+    if (s && !seen.has(norm(s))) seen.set(norm(s), s);
+  }
+  return [...seen.values()];
+}
+const canonicalSubject = (s) => allSubjects().find((x) => sameSubject(x, s)) || String(s || "").trim();
+const subjectDatalist = () => `<datalist id="subjectList">${allSubjects().map((s) => `<option value="${esc(s)}"></option>`).join("")}</datalist>`;
+const chaptersOf = (subject) => state.chapters.filter((c) => sameSubject(c.subject, subject)).sort((a, b) => a.title.localeCompare(b.title, "fr", { numeric: true }));
+const chapterById = (id) => state.chapters.find((c) => c.id === id);
+const usedBy = (chapterId) => state.events.filter((e) => e.chapters?.includes(chapterId));
+
+function upsertChapter(ch) {
+  const i = state.chapters.findIndex((x) => x.id === ch.id);
+  if (i >= 0) state.chapters[i] = ch; else state.chapters.push(ch);
+}
+
+async function preparePdf(picked, status) {
+  const notes = [];
+  const images = picked.filter((f) => PdfTools.isImage(f));
+  const pdfs = picked.filter((f) => PdfTools.isPdf(f));
+  if (picked.length > images.length + pdfs.length) notes.push("fichiers ignorés : PDF, PNG ou JPG seulement");
+  let file;
+  if (pdfs.length) {
+    if (pdfs.length > 1 || images.length) notes.push(`un seul PDF par case : « ${pdfs[0].name} » est utilisé`);
+    file = pdfs[0];
+    if (file.size > MAX_INPUT_MB * 1024 * 1024) throw new Error(`« ${file.name} » dépasse ${MAX_INPUT_MB} Mo`);
+    status("Compression…");
+    try {
+      const res = await PdfTools.compressPdf(file, (k, n) => status(`Compression · image ${k}/${n}`));
+      if (res.compressed) { notes.push(`compressé : ${size(res.before)} → ${size(res.after)}`); file = res.file; }
+      else if (file.size > 1024 * 1024) notes.push(res.reason);
+    } catch { /* compression is best effort: the original is sent */ }
+  } else if (images.length) {
+    file = await PdfTools.imagesToPdf(images, (i, n) => status(n > 1 ? `Conversion des photos ${i}/${n}…` : "Conversion en PDF…"));
+    notes.push(images.length > 1 ? `${images.length} photos réunies en un PDF` : "photo convertie en PDF");
+  } else {
+    throw new Error("Choisis un PDF, un PNG ou un JPG");
+  }
+  if (file.size > MAX_PDF_MB * 1024 * 1024) throw new Error(`« ${file.name} » dépasse encore ${MAX_PDF_MB} Mo après compression`);
+  return { file, notes };
+}
 
 function putWithProgress(url, file, onProgress) {
   return new Promise((resolve, reject) => {
@@ -295,18 +397,12 @@ function putWithProgress(url, file, onProgress) {
   });
 }
 
-async function uploadPdf(eventId, f, onProgress) {
-  const by = getName();
-  let start;
-  try {
-    start = await api("files/start", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: eventId, by, name: f.name, size: f.size }) });
-  } catch (err) {
-    if (err.status !== 501) throw err;
-    if (f.size > LEGACY_MAX_PDF) throw new Error("dépasse 5,5 Mo");
-    return api(`files?event=${eventId}&by=${encodeURIComponent(by)}&name=${encodeURIComponent(f.name)}`, { method: "POST", headers: { "content-type": "application/pdf" }, body: f });
-  }
+async function uploadToSlot(chapterId, slot, f, onProgress) {
+  const base = { chapter: chapterId, slot, by: getName(), name: f.name };
+  const post = (path, body) => api(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const start = await post("files/start", { ...base, size: f.size });
   await putWithProgress(start.uploadUrl, f, onProgress);
-  return api("files/finish", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: eventId, key: start.key, name: f.name, by }) });
+  return post("files/finish", { ...base, key: start.key });
 }
 
 function showLogin() {
@@ -334,7 +430,7 @@ $("#loginForm").addEventListener("submit", async (e) => {
 
 async function start() {
   if (!getName()) return showLogin();
-  state.events = await api("events");
+  [state.events, state.chapters] = await Promise.all([api("events"), api("chapters")]);
   const wasHidden = $("#app").classList.contains("hidden");
   $("#login").classList.add("hidden");
   $("#app").classList.remove("hidden");
@@ -450,11 +546,12 @@ function changeMonth(dir, opts = {}) {
 
 const clip = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.1l-9.2 9.2a6 6 0 01-8.5-8.5l9.2-9.2a4 4 0 015.7 5.7l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5"/></svg>`;
 function evCard(e, withDate) {
-  const when = [withDate && shortDate(e.date), e.time].filter(Boolean).join(" · ");
+  const when = [KIND_LABEL[e.kind || "eval"], withDate && shortDate(e.date), e.time].filter(Boolean).join(" · ");
+  const n = (e.chapters || []).length;
   return `<button class="ev" data-id="${e.id}" style="--c:${col(e.color)}"><span class="bar"></span><span class="body">
     <div class="t">${esc(e.title)}</div>
     ${e.subject ? `<div class="s">${esc(e.subject)}</div>` : ""}
-    <div class="meta">${when ? `<span>${esc(when)}</span>` : ""}${e.files.length ? `<span>${clip} ${e.files.length} cours</span>` : ""}</div>
+    <div class="meta">${when ? `<span>${esc(when)}</span>` : ""}${n ? `<span>${clip} ${n} chapitre${n > 1 ? "s" : ""}</span>` : ""}</div>
   </span></button>`;
 }
 
@@ -472,6 +569,7 @@ $("#todayBtn").onclick = () => {
   changeMonth(Math.sign(diff) * Math.abs(diff), { select: iso(now) });
 };
 $("#addBtn").onclick = () => openEdit(null, state.selected);
+$("#libBtn").onclick = () => openLibrary();
 $("#whoBtn").onclick = () => {
   const bd = openSheet(`
     <div class="sheet-head">
@@ -611,56 +709,130 @@ function upsert(ev) {
   render();
 }
 
-function openEdit(ev, date) {
-  const e = ev || { title: "", subject: "", date: date || state.selected, time: "", color: "blue", notes: "" };
+const ICON = {
+  folder: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 6.5A2.5 2.5 0 015.5 4h3.6c.6 0 1.2.2 1.6.6L12 6h6.5A2.5 2.5 0 0121 8.5v9a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 17.5z"/></svg>`,
+  chevron: `<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>`,
+  back: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`,
+  plus: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`,
+  close: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>`,
+  check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`,
+};
+const ACCEPT = "application/pdf,.pdf,image/png,image/jpeg,image/heic,.png,.jpg,.jpeg,.heic";
+const slotChips = (ch) => SLOTS.map(([k, label]) => `<span class="chip ${ch.files[k] ? "on" : ""}">${ch.files[k] ? ICON.check : ""}${label.split(" ")[0]}</span>`).join("");
+
+function openEdit(ev, date, draft) {
+  const base = ev || { kind: "eval", title: "", subject: "", date: date || state.selected, time: "", color: "blue", notes: "", chapters: [] };
+  const d = draft || { ...base, chapters: [...(base.chapters || [])] };
   const bd = openSheet(`
     <div class="sheet-head">
       <button class="link" data-act="cancel">Annuler</button>
-      <h3>${ev ? "Modifier l'éval" : "Nouvelle éval"}</h3>
+      <h3>${ev ? "Modifier" : "Nouvelle entrée"}</h3>
       <button class="link bold" data-act="save">${ev ? "OK" : "Ajouter"}</button>
     </div>
     <div class="sheet-body">
-      <div class="group">
-        <input name="title" placeholder="Titre (ex : Contrôle chapitre 3)" maxlength="120" value="${esc(e.title)}">
-        <input name="subject" placeholder="Matière" maxlength="60" value="${esc(e.subject)}">
+      <div class="segmented" role="tablist">
+        ${Object.entries(KIND_LABEL).map(([k, label]) => `<button type="button" role="tab" data-kind="${k}" class="${d.kind === k ? "on" : ""}">${label}</button>`).join("")}
       </div>
       <div class="group">
-        <div class="row"><span>Date</span><input type="date" name="date" value="${esc(e.date)}"></div>
-        <div class="row"><span>Heure <span style="color:var(--text2)">(facultatif)</span></span><input type="time" name="time" value="${esc(e.time)}"></div>
+        <input name="title" placeholder="Titre (ex : Contrôle chapitre 3)" maxlength="120" value="${esc(d.title)}">
+        <input name="subject" placeholder="Matière" maxlength="60" list="subjectList" autocomplete="off" value="${esc(d.subject)}">
+      </div>
+      ${subjectDatalist()}
+      <div class="group">
+        <div class="row"><span>Date</span><input type="date" name="date" value="${esc(d.date)}"></div>
+        <div class="row"><span>Heure <span style="color:var(--text2)">(facultatif)</span></span><input type="time" name="time" value="${esc(d.time)}"></div>
+      </div>
+      <div>
+        <div class="label">Chapitres concernés</div>
+        <div class="group" id="chapterPick"></div>
       </div>
       <div>
         <div class="label">Couleur</div>
-        <div class="group swatches">${COLORS.map((c) => `<button type="button" class="swatch ${c === e.color ? "on" : ""}" data-color="${c}" style="--c:var(--${c})" aria-label="${c}"></button>`).join("")}</div>
+        <div class="group swatches">${COLORS.map((c) => `<button type="button" class="swatch ${c === d.color ? "on" : ""}" data-color="${c}" style="--c:var(--${c})" aria-label="${c}"></button>`).join("")}</div>
       </div>
-      <div class="group"><textarea name="notes" rows="4" placeholder="Notes (chapitres à réviser, consignes…)" maxlength="2000">${esc(e.notes)}</textarea></div>
-      ${ev ? "" : `<div class="label" style="margin-top:-8px">Tu pourras ajouter les PDF de cours juste après.</div>`}
+      <div class="group"><textarea name="notes" rows="3" placeholder="Notes (consignes, pages, durée…)" maxlength="2000">${esc(d.notes)}</textarea></div>
     </div>`);
-  let color = e.color;
+
+  const field = (n) => bd.querySelector(`[name=${n}]`);
+  const sync = () => { for (const n of ["title", "subject", "date", "time", "notes"]) d[n] = field(n).value; };
+
+  const drawChapters = () => {
+    const box = bd.querySelector("#chapterPick");
+    const list = d.subject.trim() ? chaptersOf(d.subject) : [];
+    const others = d.chapters.map(chapterById).filter((c) => c && !list.includes(c));
+    const rows = [...list, ...others].map((c) => `
+      <label class="pick">
+        <input type="checkbox" value="${c.id}" ${d.chapters.includes(c.id) ? "checked" : ""}>
+        <span class="tick">${ICON.check}</span>
+        <span class="pick-body"><span class="pick-title">${esc(c.title)}</span>${others.includes(c) ? `<span class="pick-sub">${esc(c.subject)}</span>` : ""}<span class="chips">${slotChips(c)}</span></span>
+      </label>`).join("");
+    const empty = !d.subject.trim()
+      ? `<div class="hint">Choisis d'abord la matière pour voir ses chapitres.</div>`
+      : list.length ? "" : `<div class="hint">Aucun chapitre en ${esc(d.subject)} pour l'instant.</div>`;
+    box.innerHTML = `${rows}${empty}<button type="button" class="upload" data-act="newChapter">${ICON.plus}<span>Nouveau chapitre${d.subject.trim() ? ` en ${esc(d.subject)}` : ""}</span></button>`;
+    box.querySelectorAll(".pick input").forEach((cb) => cb.onchange = () => {
+      d.chapters = cb.checked ? [...new Set([...d.chapters, cb.value])] : d.chapters.filter((x) => x !== cb.value);
+    });
+    box.querySelector("[data-act=newChapter]").onclick = () => {
+      sync();
+      openChapterEdit(null, {
+        subject: d.subject,
+        onDone: (ch) => { d.subject = ch.subject; d.chapters = [...new Set([...d.chapters, ch.id])]; openEdit(ev, date, d); },
+        onCancel: () => openEdit(ev, date, d),
+      });
+    };
+  };
+  drawChapters();
+  field("subject").addEventListener("input", () => { d.subject = field("subject").value; drawChapters(); });
+
+  bd.querySelectorAll("[data-kind]").forEach((b) => b.onclick = () => {
+    d.kind = b.dataset.kind;
+    bd.querySelectorAll("[data-kind]").forEach((x) => x.classList.toggle("on", x === b));
+  });
   bd.querySelectorAll(".swatch").forEach((s) => s.onclick = () => {
-    color = s.dataset.color;
+    d.color = s.dataset.color;
     bd.querySelectorAll(".swatch").forEach((x) => x.classList.toggle("on", x === s));
   });
   bd.querySelector("[data-act=cancel]").onclick = () => ev ? openDetail(ev.id) : closeSheet();
   bd.querySelector("[data-act=save]").onclick = async (btn) => {
-    const v = (n) => bd.querySelector(`[name=${n}]`).value;
-    const body = { title: v("title"), subject: v("subject"), date: v("date"), time: v("time"), notes: v("notes"), color, by: getName() };
-    if (!body.title.trim()) return toast("Ajoute un titre");
+    sync();
+    if (!d.title.trim()) return toast("Ajoute un titre");
     btn.target.innerHTML = `<span class="spinner"></span>`;
     try {
+      const body = { kind: d.kind, title: d.title, subject: canonicalSubject(d.subject), date: d.date, time: d.time, notes: d.notes, color: d.color, chapters: d.chapters, by: getName() };
       const saved = await api(ev ? `events/${ev.id}` : "events", { method: ev ? "PUT" : "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
       upsert(saved);
       state.selected = saved.date; state.month = firstOfMonth(parse(saved.date)); render();
       openDetail(saved.id);
-      toast(ev ? "Éval modifiée" : "Éval ajoutée");
+      toast(ev ? "Modifié" : `${KIND_LABEL[saved.kind]} ajouté${saved.kind === "eval" ? "e" : ""}`);
     } catch (err) { toast(err.message); btn.target.textContent = ev ? "OK" : "Ajouter"; }
   };
-  bd.querySelector("[name=title]").focus();
+  if (!draft) field("title").focus();
+}
+
+function slotRows(ch, { editable }) {
+  return SLOTS.map(([k, label]) => {
+    const f = ch.files[k];
+    if (f) {
+      return `<div class="file">
+        <span class="ico">PDF</span>
+        <a href="/api/files/${encodeURIComponent(f.key)}" target="_blank" rel="noopener"><div class="n">${label}</div><div class="m">${esc(f.name)} · ${size(f.size)} · ${esc(f.uploadedBy)}</div></a>
+        ${editable ? `<label class="mini" title="Remplacer">Remplacer<input type="file" accept="${ACCEPT}" multiple data-slot="${k}"></label>
+        <button class="del" data-del="${k}" aria-label="Supprimer ${label}">${ICON.close}</button>` : ""}
+      </div>`;
+    }
+    return editable
+      ? `<label class="upload slot-empty"><span class="ico ghost">PDF</span><span class="slot-text"><b>${label}</b><span data-status="${k}">Ajouter un PDF ou des photos</span></span><input type="file" accept="${ACCEPT}" multiple data-slot="${k}"></label>`
+      : `<div class="file missing"><span class="ico ghost">PDF</span><div class="n-wrap"><div class="n">${label}</div><div class="m">Pas encore ajouté</div></div></div>`;
+  }).join("");
 }
 
 function openDetail(id) {
   const e = state.events.find((x) => x.id === id);
   if (!e) return closeSheet();
   const hist = [...e.history].reverse().slice(0, 8);
+  const linked = (e.chapters || []).map(chapterById).filter(Boolean)
+    .sort((a, b) => a.subject.localeCompare(b.subject, "fr") || a.title.localeCompare(b.title, "fr", { numeric: true }));
   const bd = openSheet(`
     <div class="sheet-head">
       <button class="link" data-act="close">Fermer</button>
@@ -669,91 +841,193 @@ function openDetail(id) {
     </div>
     <div class="sheet-body">
       <div>
+        <span class="kind-badge" style="--c:${col(e.color)}">${KIND_LABEL[e.kind || "eval"]}</span>
         <h2 class="detail-title" style="--c:${col(e.color)}"><span class="bar"></span><span>${esc(e.title)}</span></h2>
         <div class="detail-sub">${esc(e.subject ? e.subject + " · " : "")}${longDate(e.date)}${e.time ? " à " + esc(e.time) : ""}</div>
       </div>
       ${e.notes ? `<div><div class="label">Notes</div><div class="group notes">${esc(e.notes)}</div></div>` : ""}
       <div>
-        <div class="label">Cours (${e.files.length})</div>
-        <div class="group">
-          ${e.files.map((f) => `
-            <div class="file">
-              <span class="ico">PDF</span>
-              <a href="/api/files/${encodeURIComponent(f.key)}" target="_blank" rel="noopener"><div class="n">${esc(f.name)}</div><div class="m">${size(f.size)} · ajouté par ${esc(f.uploadedBy)}</div></a>
-              <button class="del" data-del="${esc(f.key)}" aria-label="Supprimer ${esc(f.name)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
-            </div>`).join("")}
-          <label class="upload"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span id="upLabel">Ajouter un PDF ou des photos</span><input type="file" accept="application/pdf,.pdf,image/png,image/jpeg,image/heic,.png,.jpg,.jpeg,.heic" multiple></label>
-        </div>
+        <div class="label">Chapitres (${linked.length})</div>
+        ${linked.length ? linked.map((c) => `
+          <div class="group chapter-card">
+            <button class="chapter-head" data-chapter="${c.id}"><span><b>${esc(c.title)}</b>${sameSubject(c.subject, e.subject) ? "" : `<small>${esc(c.subject)}</small>`}</span>${ICON.chevron}</button>
+            ${slotRows(c, { editable: false })}
+          </div>`).join("") : `<div class="group"><div class="hint">Aucun chapitre lié. Touche « Modifier » pour en choisir dans la bibliothèque.</div></div>`}
       </div>
       <div>
         <div class="label">Historique</div>
         <div class="group history">${hist.map((h) => `<div><b>${esc(h.by)}</b> ${esc(h.action)} · ${ago(h.at)}</div>`).join("")}</div>
       </div>
-      <button class="btn-row" data-act="delete">Supprimer l'éval</button>
+      <button class="btn-row" data-act="delete">Supprimer ${e.kind === "exercice" ? "l'exercice" : "l'éval"}</button>
     </div>`);
 
   bd.querySelector("[data-act=close]").onclick = closeSheet;
   bd.querySelector("[data-act=edit]").onclick = () => openEdit(e);
+  bd.querySelectorAll("[data-chapter]").forEach((b) => b.onclick = () => openChapter(b.dataset.chapter, () => openDetail(e.id), "Retour"));
   bd.querySelector("[data-act=delete]").onclick = async () => {
-    if (!confirm(`Supprimer « ${e.title} » et ses ${e.files.length} PDF ? C'est définitif pour toute la classe.`)) return;
+    if (!confirm(`Supprimer « ${e.title} » ? Les chapitres restent dans la bibliothèque.`)) return;
     try {
       await api(`events/${e.id}?by=${encodeURIComponent(getName())}`, { method: "DELETE" });
       state.events = state.events.filter((x) => x.id !== e.id);
-      closeSheet(); render(); toast("Éval supprimée");
+      closeSheet(); render(); toast("Supprimé");
+    } catch (err) { toast(err.message); }
+  };
+}
+
+function openLibrary(query = "") {
+  const subjects = allSubjects().filter((s) => chaptersOf(s).length);
+  const bd = openSheet(`
+    <div class="sheet-head">
+      <button class="link" data-act="close">Fermer</button>
+      <h3>Bibliothèque</h3>
+      <button class="link bold" data-act="new" aria-label="Nouveau chapitre">${ICON.plus}</button>
+    </div>
+    <div class="sheet-body">
+      <input class="search" type="search" placeholder="Rechercher un chapitre ou une matière" value="${esc(query)}">
+      <div id="libResults"></div>
+    </div>`);
+  const draw = (q) => {
+    const box = bd.querySelector("#libResults");
+    if (q.trim()) {
+      const hits = state.chapters.filter((c) => norm(c.title).includes(norm(q)) || norm(c.subject).includes(norm(q)));
+      box.innerHTML = hits.length ? `<div class="group">${hits.map((c) => `
+        <button class="nav-row" data-chapter="${c.id}"><span class="nav-body"><b>${esc(c.title)}</b><small>${esc(c.subject)}</small><span class="chips">${slotChips(c)}</span></span>${ICON.chevron}</button>`).join("")}</div>`
+        : `<div class="empty">Aucun résultat</div>`;
+    } else {
+      box.innerHTML = subjects.length ? `<div class="group">${subjects.map((s) => `
+        <button class="nav-row" data-subject="${esc(s)}"><span class="folder">${ICON.folder}</span><span class="nav-body"><b>${esc(s)}</b><small>${chaptersOf(s).length} chapitre${chaptersOf(s).length > 1 ? "s" : ""}</small></span>${ICON.chevron}</button>`).join("")}</div>`
+        : `<div class="empty">La bibliothèque est vide.<br>Touche + pour ajouter le premier chapitre.</div>`;
+    }
+    box.querySelectorAll("[data-subject]").forEach((b) => b.onclick = () => openFolder(b.dataset.subject));
+    box.querySelectorAll("[data-chapter]").forEach((b) => b.onclick = () => openChapter(b.dataset.chapter, () => openLibrary(q), "Bibliothèque"));
+  };
+  draw(query);
+  bd.querySelector(".search").addEventListener("input", (ev) => draw(ev.target.value));
+  bd.querySelector("[data-act=close]").onclick = closeSheet;
+  bd.querySelector("[data-act=new]").onclick = () => openChapterEdit(null, { onCancel: () => openLibrary() });
+}
+
+function openFolder(subject) {
+  const list = chaptersOf(subject);
+  if (!list.length) return openLibrary();
+  const name = list[0].subject;
+  const bd = openSheet(`
+    <div class="sheet-head">
+      <button class="link back" data-act="back">${ICON.back}Bibliothèque</button>
+      <h3></h3>
+      <button class="link bold" data-act="new" aria-label="Nouveau chapitre">${ICON.plus}</button>
+    </div>
+    <div class="sheet-body">
+      <h2 class="folder-title">${esc(name)}</h2>
+      <div class="group">${list.map((c) => `
+        <button class="nav-row" data-chapter="${c.id}"><span class="nav-body"><b>${esc(c.title)}</b><span class="chips">${slotChips(c)}</span></span>${ICON.chevron}</button>`).join("")}</div>
+    </div>`);
+  bd.querySelector("[data-act=back]").onclick = () => openLibrary();
+  bd.querySelector("[data-act=new]").onclick = () => openChapterEdit(null, { subject: name, onCancel: () => openFolder(name) });
+  bd.querySelectorAll("[data-chapter]").forEach((b) => b.onclick = () => openChapter(b.dataset.chapter, () => openFolder(name), name));
+}
+
+function openChapter(id, back, backLabel) {
+  const c = chapterById(id);
+  if (!c) return back ? back() : openLibrary();
+  const goBack = back || (() => openFolder(c.subject));
+  const label = backLabel || c.subject;
+  const uses = usedBy(c.id);
+  const hist = [...(c.history || [])].reverse().slice(0, 6);
+  const bd = openSheet(`
+    <div class="sheet-head">
+      <button class="link back" data-act="back">${ICON.back}<span class="back-label">${esc(label)}</span></button>
+      <h3></h3>
+      <button class="link" data-act="edit">Renommer</button>
+    </div>
+    <div class="sheet-body">
+      <div>
+        <div class="detail-sub">${esc(c.subject)}</div>
+        <h2 class="folder-title">${esc(c.title)}</h2>
+      </div>
+      <div class="group">${slotRows(c, { editable: true })}</div>
+      ${uses.length ? `<div><div class="label">Utilisé dans</div><div class="group">${uses.map((e) => `
+        <button class="nav-row" data-event="${e.id}"><span class="nav-body"><b>${esc(e.title)}</b><small>${KIND_LABEL[e.kind || "eval"]} · ${shortDate(e.date)}</small></span>${ICON.chevron}</button>`).join("")}</div></div>` : ""}
+      <div>
+        <div class="label">Historique</div>
+        <div class="group history">${hist.map((h) => `<div><b>${esc(h.by)}</b> ${esc(h.action)} · ${ago(h.at)}</div>`).join("")}</div>
+      </div>
+      <button class="btn-row" data-act="delete">Supprimer le chapitre</button>
+    </div>`);
+
+  bd.querySelector("[data-act=back]").onclick = goBack;
+  bd.querySelector("[data-act=edit]").onclick = () => openChapterEdit(c, { onCancel: () => openChapter(c.id, back, backLabel) });
+  bd.querySelectorAll("[data-event]").forEach((b) => b.onclick = () => openDetail(b.dataset.event));
+  bd.querySelector("[data-act=delete]").onclick = async () => {
+    const warn = uses.length ? ` Il sera retiré de ${uses.length} éval${uses.length > 1 ? "s" : ""} ou exercice${uses.length > 1 ? "s" : ""}.` : "";
+    if (!confirm(`Supprimer « ${c.title} » et ses PDF pour toute la classe ?${warn}`)) return;
+    try {
+      await api(`chapters/${c.id}?by=${encodeURIComponent(getName())}`, { method: "DELETE" });
+      state.chapters = state.chapters.filter((x) => x.id !== c.id);
+      state.events = state.events.map((e) => ({ ...e, chapters: (e.chapters || []).filter((x) => x !== c.id) }));
+      render(); toast("Chapitre supprimé");
+      chaptersOf(c.subject).length ? openFolder(c.subject) : openLibrary();
     } catch (err) { toast(err.message); }
   };
   bd.querySelectorAll("[data-del]").forEach((b) => b.onclick = async () => {
-    const f = e.files.find((x) => x.key === b.dataset.del);
-    if (!confirm(`Supprimer « ${f.name} » ?`)) return;
+    const slot = b.dataset.del;
+    const label = SLOTS.find(([k]) => k === slot)[1];
+    if (!confirm(`Supprimer « ${label} » de ce chapitre ?`)) return;
     try {
-      upsert(await api(`files/${encodeURIComponent(f.key)}?event=${e.id}&by=${encodeURIComponent(getName())}`, { method: "DELETE" }));
-      openDetail(e.id);
+      upsertChapter(await api(`files/${encodeURIComponent(c.files[slot].key)}?chapter=${c.id}&slot=${slot}&by=${encodeURIComponent(getName())}`, { method: "DELETE" }));
+      render(); openChapter(c.id, back, backLabel);
     } catch (err) { toast(err.message); }
   });
-  bd.querySelector(".upload input").onchange = async (ev) => {
-    const picked = [...ev.target.files];
-    const label = bd.querySelector("#upLabel");
-    const status = (text) => { label.innerHTML = `<span class="spinner"></span> ${esc(text)}`; };
-    const notes = [];
-    const images = picked.filter((f) => PdfTools.isImage(f));
-    const queue = picked.filter((f) => PdfTools.isPdf(f)).map((f) => ({ file: f, convert: false }));
-    const ignored = picked.length - images.length - queue.length;
-    if (ignored) notes.push(`${ignored} fichier${ignored > 1 ? "s" : ""} ignoré${ignored > 1 ? "s" : ""} (PDF, PNG ou JPG seulement)`);
+  bd.querySelectorAll("input[data-slot]").forEach((input) => input.onchange = async () => {
+    const slot = input.dataset.slot;
+    const holder = input.closest(".file, .upload");
+    const status = (text) => {
+      let s = holder.querySelector("[data-status]") || holder.querySelector(".m");
+      if (s) s.innerHTML = `<span class="spinner"></span> ${esc(text)}`;
+    };
+    try {
+      const { file, notes } = await preparePdf([...input.files], status);
+      status("Envoi…");
+      const saved = await uploadToSlot(c.id, slot, file, (p) => status(`Envoi · ${Math.round(p * 100)} %`));
+      upsertChapter(saved); render();
+      openChapter(c.id, back, backLabel);
+      toast([`${SLOTS.find(([k]) => k === slot)[1]} ajouté${slot === "cours" ? "e" : ""}`, ...notes].join(" · "));
+    } catch (err) { toast(err.message); openChapter(c.id, back, backLabel); }
+  });
+}
 
-    if (images.length) {
-      try {
-        const pdf = await PdfTools.imagesToPdf(images, (i, n) => status(n > 1 ? `Conversion des photos ${i}/${n}…` : "Conversion en PDF…"));
-        queue.unshift({ file: pdf, convert: true });
-        notes.push(images.length > 1 ? `${images.length} photos réunies dans « ${pdf.name} »` : `Photo convertie en « ${pdf.name} »`);
-      } catch (err) { notes.push(err.message); }
-    }
-
-    for (const [i, item] of queue.entries()) {
-      const count = queue.length > 1 ? ` ${i + 1}/${queue.length}` : "";
-      let f = item.file;
-      if (f.size > MAX_INPUT_MB * 1024 * 1024) { notes.push(`« ${f.name} » dépasse ${MAX_INPUT_MB} Mo`); continue; }
-      if (!item.convert) {
-        status(`Compression${count}…`);
-        try {
-          const res = await PdfTools.compressPdf(f, (k, n) => status(`Compression${count} · image ${k}/${n}`));
-          if (res.compressed) {
-            notes.push(`« ${f.name} » compressé : ${size(res.before)} → ${size(res.after)}`);
-            f = res.file;
-          } else if (f.size > 1024 * 1024) {
-            notes.push(`« ${f.name} » ${res.reason}`);
-          }
-        } catch { /* compression is best effort: the original is sent */ }
-      }
-      if (f.size > MAX_PDF_MB * 1024 * 1024) { notes.push(`« ${f.name} » dépasse encore ${MAX_PDF_MB} Mo après compression`); continue; }
-      const show = (p) => status(`Envoi${count}${p === undefined ? "…" : ` · ${Math.round(p * 100)} %`}`);
-      show();
-      try {
-        upsert(await uploadPdf(e.id, f, show));
-      } catch (err) { notes.push(`${f.name} : ${err.message}`); }
-    }
-    openDetail(e.id);
-    if (notes.length) toast(notes.join(" · "));
+function openChapterEdit(ch, opts = {}) {
+  const d = { subject: ch ? ch.subject : (opts.subject || ""), title: ch ? ch.title : "" };
+  const bd = openSheet(`
+    <div class="sheet-head">
+      <button class="link" data-act="cancel">Annuler</button>
+      <h3>${ch ? "Renommer le chapitre" : "Nouveau chapitre"}</h3>
+      <button class="link bold" data-act="save">${ch ? "OK" : "Créer"}</button>
+    </div>
+    <div class="sheet-body">
+      <div class="group">
+        <input name="subject" placeholder="Matière" maxlength="60" list="subjectList" autocomplete="off" value="${esc(d.subject)}">
+        <input name="title" placeholder="Chapitre (ex : Chapitre 4 – La TVA)" maxlength="120" value="${esc(d.title)}">
+      </div>
+      ${subjectDatalist()}
+      ${ch ? "" : `<div class="label" style="margin-top:-8px">Tu ajouteras ensuite la fiche de cours, le sujet type et son corrigé.</div>`}
+    </div>`);
+  const field = (n) => bd.querySelector(`[name=${n}]`);
+  bd.querySelector("[data-act=cancel]").onclick = () => (opts.onCancel ? opts.onCancel() : closeSheet());
+  bd.querySelector("[data-act=save]").onclick = async (btn) => {
+    const body = { subject: canonicalSubject(field("subject").value), title: field("title").value, by: getName() };
+    if (!body.subject.trim()) return toast("Choisis la matière");
+    if (!body.title.trim()) return toast("Donne un nom au chapitre");
+    btn.target.innerHTML = `<span class="spinner"></span>`;
+    try {
+      const saved = await api(ch ? `chapters/${ch.id}` : "chapters", { method: ch ? "PUT" : "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      upsertChapter(saved); render();
+      toast(ch ? "Chapitre renommé" : "Chapitre créé");
+      if (opts.onDone) opts.onDone(saved);
+      else openChapter(saved.id);
+    } catch (err) { toast(err.message); btn.target.textContent = ch ? "OK" : "Créer"; }
   };
+  (d.subject ? field("title") : field("subject")).focus();
 }
 
 api("me").then(start).catch(() => showLogin());

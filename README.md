@@ -49,8 +49,8 @@ Vue du mois façon Apple, pastilles de couleur par éval, liste du jour et proch
 </td>
 <td width="50%" valign="top">
 
-### 📎 Les cours avec chaque éval
-Chaque éval peut avoir un ou plusieurs PDF, jusqu'à 100 Mo chacun. On les ouvre directement en ligne, sans rien télécharger.
+### 📚 Une bibliothèque de cours
+Les PDF sont rangés par matière, puis par chapitre. Chaque chapitre a sa fiche de cours, son sujet type et le corrigé du sujet. Une éval ou un exercice renvoie aux chapitres concernés, et on ouvre les PDF directement en ligne.
 
 </td>
 </tr>
@@ -250,10 +250,10 @@ git push origin v1.0.1
 ```
 AgendaDCG/
 ├── public/
-│   ├── index.html          # Interface : calendrier, fiches d'éval, envoi de PDF
+│   ├── index.html          # Interface : calendrier, évals et exercices, bibliothèque de cours
 │   └── pdf-tools.js        # Compression des PDF et conversion des photos
 ├── netlify/functions/
-│   └── api.mjs             # API : connexion, évals, PDF
+│   └── api.mjs             # API : connexion, évals, chapitres, PDF
 ├── pdf-worker/
 │   └── src/index.js        # Worker Cloudflare : envoi et lecture des PDF dans R2
 ├── desktop/
