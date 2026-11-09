@@ -1139,7 +1139,12 @@ function allSubjects() {
   return [...seen.values()];
 }
 const canonicalSubject = (s) => allSubjects().find((x) => sameSubject(x, s)) || String(s || "").trim();
-const subjectDatalist = () => `<datalist id="subjectList">${allSubjects().map((s) => `<option value="${esc(s)}"></option>`).join("")}</datalist>`;
+function courseSubjects(extra = []) {
+  const seen = new Map();
+  for (const s of [...state.chapters.map((c) => c.subject), ...extra]) if (s && !seen.has(norm(s))) seen.set(norm(s), canonicalSubject(s));
+  return [...seen.values()].sort((a, b) => a.localeCompare(b, "fr", { numeric: true }));
+}
+const subjectDatalist = (list = allSubjects()) => `<datalist id="subjectList">${list.map((s) => `<option value="${esc(s)}"></option>`).join("")}</datalist>`;
 const chaptersOf = (subject) => state.chapters.filter((c) => sameSubject(c.subject, subject)).sort((a, b) => a.title.localeCompare(b.title, "fr", { numeric: true }));
 const chapterById = (id) => state.chapters.find((c) => c.id === id);
 const usedBy = (chapterId) => state.events.filter((e) => e.chapters?.includes(chapterId));
@@ -1304,7 +1309,7 @@ function openEdit(ev, date, draft) {
         <input name="title" placeholder="Titre (ex : Contrôle chapitre 3)" maxlength="120" value="${esc(d.title)}">
         <input name="subject" placeholder="Matière" maxlength="60" list="subjectList" autocomplete="off" value="${esc(d.subject)}">
       </div>
-      ${subjectDatalist()}
+      ${subjectDatalist(courseSubjects())}
       <div class="group">
         <div class="row"><span>Date</span><input type="date" name="date" value="${esc(d.date)}"></div>
         <div class="row"><span>Heure <span style="color:var(--text2)">(facultatif)</span></span><input type="time" name="time" value="${esc(d.time)}"></div>
@@ -1784,7 +1789,7 @@ function openGradeEdit(g, subject) {
         <input name="subject" placeholder="Matière" maxlength="60" list="subjectList" autocomplete="off" value="${esc(d.subject)}">
         <input name="title" placeholder="Intitulé (facultatif)" maxlength="120" value="${esc(d.title)}">
       </div>
-      ${subjectDatalist()}
+      ${subjectDatalist(courseSubjects((state.profile?.grades || []).map((g) => g.subject)))}
       <div class="group">
         <div class="row"><span>Note</span><span><input name="value" type="number" inputmode="decimal" step="0.25" min="0" style="width:80px;text-align:right;border:0;background:var(--bg2);border-radius:7px;padding:5px 8px" value="${esc(d.value)}"> / <input name="outOf" type="number" inputmode="decimal" step="1" min="1" max="100" style="width:56px;text-align:right;border:0;background:var(--bg2);border-radius:7px;padding:5px 8px" value="${esc(d.outOf)}"></span></div>
         <div class="row"><span>Coefficient</span><input name="coef" type="number" inputmode="decimal" step="0.5" min="0.1" max="20" style="width:80px;text-align:right;border:0;background:var(--bg2);border-radius:7px;padding:5px 8px" value="${esc(d.coef)}"></div>
