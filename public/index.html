@@ -158,6 +158,7 @@ input, textarea { font: inherit; color: var(--text); }
 .spinner { width: 18px; height: 18px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; vertical-align: -3px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>
+<script src="/pdf-tools.js" defer></script>
 </head>
 <body>
 
@@ -168,8 +169,8 @@ input, textarea { font: inherit; color: var(--text); }
     <p>Les évaluations de la classe et leurs cours</p>
     <div class="group">
       <input id="loginName" placeholder="Ton prénom" autocomplete="given-name" maxlength="40" required>
-      <input id="loginPass" type="password" placeholder="Mot de passe de la classe" autocomplete="current-password" required>
     </div>
+    <p style="font-size:13px;margin:10px 0 0">Ton prénom s'affiche sur tes ajouts et modifications.</p>
     <button class="btn-primary" id="loginBtn">Entrer</button>
     <div class="error" id="loginErr"></div>
   </form>
@@ -232,18 +233,18 @@ function toast(msg) {
   const t = document.createElement("div");
   t.className = "toast"; t.textContent = msg;
   document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2600);
+  setTimeout(() => t.remove(), Math.max(2600, msg.length * 70));
 }
 
 async function api(path, opts = {}) {
   const res = await fetch("/api/" + path, opts);
   const data = await res.json().catch(() => ({}));
-  if (res.status === 401 && path !== "login") { showLogin(); throw new Error("Session expirée"); }
   if (!res.ok) { const err = new Error(data.error || "Erreur"); err.status = res.status; throw err; }
   return data;
 }
 
 const MAX_PDF_MB = 100;
+const MAX_INPUT_MB = 300;
 const LEGACY_MAX_PDF = 5.5 * 1024 * 1024;
 
 function putWithProgress(url, file, onProgress) {
@@ -292,9 +293,7 @@ $("#loginForm").addEventListener("submit", async (e) => {
   if (!name) return;
   $("#loginBtn").disabled = true; $("#loginErr").textContent = "";
   try {
-    await api("login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: $("#loginPass").value }) });
     setName(name);
-    $("#loginPass").value = "";
     await start();
   } catch (err) { $("#loginErr").textContent = err.message; }
   $("#loginBtn").disabled = false;
@@ -380,14 +379,12 @@ $("#whoBtn").onclick = () => {
     <div class="sheet-body">
       <div class="group"><input name="who" maxlength="40" value="${esc(getName())}" placeholder="Ton prénom"></div>
       <div class="label" style="margin-top:-8px">Affiché sur tes ajouts et modifications.</div>
-      <button class="btn-row" data-act="logout">Se déconnecter</button>
     </div>`);
   const input = bd.querySelector("[name=who]");
   const save = () => { const n = input.value.trim(); if (!n) return toast("Ajoute ton prénom"); setName(n.slice(0, 40)); closeSheet(); };
   bd.querySelector("[data-act=cancel]").onclick = closeSheet;
   bd.querySelector("[data-act=save]").onclick = save;
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") save(); });
-  bd.querySelector("[data-act=logout]").onclick = async () => { await api("logout", { method: "POST" }).catch(() => {}); closeSheet(); showLogin(); };
   input.focus(); input.select();
 };
 
@@ -486,7 +483,7 @@ function openDetail(id) {
               <a href="/api/files/${encodeURIComponent(f.key)}" target="_blank" rel="noopener"><div class="n">${esc(f.name)}</div><div class="m">${size(f.size)} · ajouté par ${esc(f.uploadedBy)}</div></a>
               <button class="del" data-del="${esc(f.key)}" aria-label="Supprimer ${esc(f.name)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
             </div>`).join("")}
-          <label class="upload"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span id="upLabel">Ajouter un PDF de cours</span><input type="file" accept="application/pdf,.pdf" multiple></label>
+          <label class="upload"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span id="upLabel">Ajouter un PDF ou des photos</span><input type="file" accept="application/pdf,.pdf,image/png,image/jpeg,image/heic,.png,.jpg,.jpeg,.heic" multiple></label>
         </div>
       </div>
       <div>
@@ -515,22 +512,52 @@ function openDetail(id) {
     } catch (err) { toast(err.message); }
   });
   bd.querySelector(".upload input").onchange = async (ev) => {
-    const files = [...ev.target.files];
+    const picked = [...ev.target.files];
     const label = bd.querySelector("#upLabel");
-    for (const [i, f] of files.entries()) {
-      const count = files.length > 1 ? ` ${i + 1}/${files.length}` : "";
-      const show = (p) => { label.innerHTML = `<span class="spinner"></span> Envoi${count}${p === undefined ? "…" : ` · ${Math.round(p * 100)} %`}`; };
+    const status = (text) => { label.innerHTML = `<span class="spinner"></span> ${esc(text)}`; };
+    const notes = [];
+    const images = picked.filter((f) => PdfTools.isImage(f));
+    const queue = picked.filter((f) => PdfTools.isPdf(f)).map((f) => ({ file: f, convert: false }));
+    const ignored = picked.length - images.length - queue.length;
+    if (ignored) notes.push(`${ignored} fichier${ignored > 1 ? "s" : ""} ignoré${ignored > 1 ? "s" : ""} (PDF, PNG ou JPG seulement)`);
+
+    if (images.length) {
+      try {
+        const pdf = await PdfTools.imagesToPdf(images, (i, n) => status(n > 1 ? `Conversion des photos ${i}/${n}…` : "Conversion en PDF…"));
+        queue.unshift({ file: pdf, convert: true });
+        notes.push(images.length > 1 ? `${images.length} photos réunies dans « ${pdf.name} »` : `Photo convertie en « ${pdf.name} »`);
+      } catch (err) { notes.push(err.message); }
+    }
+
+    for (const [i, item] of queue.entries()) {
+      const count = queue.length > 1 ? ` ${i + 1}/${queue.length}` : "";
+      let f = item.file;
+      if (f.size > MAX_INPUT_MB * 1024 * 1024) { notes.push(`« ${f.name} » dépasse ${MAX_INPUT_MB} Mo`); continue; }
+      if (!item.convert) {
+        status(`Compression${count}…`);
+        try {
+          const res = await PdfTools.compressPdf(f, (k, n) => status(`Compression${count} · image ${k}/${n}`));
+          if (res.compressed) {
+            notes.push(`« ${f.name} » compressé : ${size(res.before)} → ${size(res.after)}`);
+            f = res.file;
+          } else if (f.size > 1024 * 1024) {
+            notes.push(`« ${f.name} » ${res.reason}`);
+          }
+        } catch { /* compression is best effort: the original is sent */ }
+      }
+      if (f.size > MAX_PDF_MB * 1024 * 1024) { notes.push(`« ${f.name} » dépasse encore ${MAX_PDF_MB} Mo après compression`); continue; }
+      const show = (p) => status(`Envoi${count}${p === undefined ? "…" : ` · ${Math.round(p * 100)} %`}`);
       show();
-      if (f.size > MAX_PDF_MB * 1024 * 1024) { toast(`« ${f.name} » dépasse ${MAX_PDF_MB} Mo`); continue; }
       try {
         upsert(await uploadPdf(e.id, f, show));
-      } catch (err) { toast(`${f.name} : ${err.message}`); }
+      } catch (err) { notes.push(`${f.name} : ${err.message}`); }
     }
     openDetail(e.id);
+    if (notes.length) toast(notes.join(" · "));
   };
 }
 
-api("me").then(start).catch(() => showLogin());
+start().catch((err) => toast(err.message));
 </script>
 </body>
 </html>

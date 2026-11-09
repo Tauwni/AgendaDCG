@@ -1,7 +1,6 @@
 import { getStore } from "@netlify/blobs";
-import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 
-const COOKIE = "agenda_session";
 const MAX_PDF = 5.5 * 1024 * 1024;
 const MAX_R2_PDF = 100 * 1024 * 1024;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -32,21 +31,6 @@ const json = (data, status = 200, headers = {}) =>
     status,
     headers: { "content-type": "application/json", ...headers },
   });
-
-const password = () => Netlify.env.get("AGENDA_PASSWORD") || "";
-const token = () => createHmac("sha256", password()).update("agenda-v1").digest("hex");
-
-function safeEqual(a, b) {
-  const x = Buffer.from(a);
-  const y = Buffer.from(b);
-  return x.length === y.length && timingSafeEqual(x, y);
-}
-
-function isAuthed(req) {
-  if (!password()) return false;
-  const m = (req.headers.get("cookie") || "").match(new RegExp(`${COOKIE}=([a-f0-9]+)`));
-  return !!m && safeEqual(m[1], token());
-}
 
 const cleanName = (s) => String(s || "").trim().slice(0, 40);
 const cleanText = (s, n) => String(s || "").trim().slice(0, n);
@@ -84,24 +68,6 @@ export default async (req) => {
   const parts = url.pathname.replace(/^\/api\/?/, "").split("/").filter(Boolean);
   const [resource, id] = parts;
   const method = req.method;
-
-  if (resource === "login" && method === "POST") {
-    const { password: pw } = await req.json().catch(() => ({}));
-    if (!password() || !safeEqual(String(pw || ""), password())) {
-      return json({ error: "Mot de passe incorrect" }, 401);
-    }
-    return json({ ok: true }, 200, {
-      "set-cookie": `${COOKIE}=${token()}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${60 * 60 * 24 * 180}`,
-    });
-  }
-
-  if (resource === "logout" && method === "POST") {
-    return json({ ok: true }, 200, { "set-cookie": `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0` });
-  }
-
-  if (!isAuthed(req)) return json({ error: "Non connecté" }, 401);
-
-  if (resource === "me") return json({ ok: true });
 
   if (resource === "events") {
     if (method === "GET" && !id) return json(await listEvents());

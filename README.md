@@ -50,7 +50,7 @@ Vue du mois façon Apple, pastilles de couleur par éval, liste du jour et proch
 <td width="50%" valign="top">
 
 ### 📎 Les cours avec chaque éval
-Chaque éval peut avoir un ou plusieurs PDF. On les ouvre directement en ligne, sans rien télécharger.
+Chaque éval peut avoir un ou plusieurs PDF, jusqu'à 100 Mo chacun. On les ouvre directement en ligne, sans rien télécharger.
 
 </td>
 </tr>
@@ -58,7 +58,7 @@ Chaque éval peut avoir un ou plusieurs PDF. On les ouvre directement en ligne, 
 <td valign="top">
 
 ### 👥 Pensé pour la classe
-Un seul mot de passe pour toute la classe. Chacun indique son prénom, et l'historique montre qui a créé, modifié ou ajouté quoi.
+Pas de compte ni de mot de passe : chacun indique juste son prénom, et l'historique montre qui a créé, modifié ou ajouté quoi.
 
 </td>
 <td valign="top">
@@ -82,6 +82,20 @@ Dans Safari : **Partager → Sur l'écran d'accueil**. L'agenda s'ouvre alors en
 
 </td>
 </tr>
+<tr>
+<td valign="top">
+
+### 🗜️ PDF compressés automatiquement
+Avant l'envoi, les images des PDF (scans, photos) sont recompressées dans le navigateur : un scan de 20 Mo passe souvent sous les 3 Mo. Le texte reste sélectionnable. Un PDF déjà léger est envoyé tel quel.
+
+</td>
+<td valign="top">
+
+### 📸 Photos converties en PDF
+Envoie des photos PNG ou JPG, par exemple le tableau ou des notes prises au téléphone : elles deviennent un PDF. Plusieurs photos choisies ensemble sont réunies dans un seul PDF.
+
+</td>
+</tr>
 </table>
 
 ## Installation
@@ -93,7 +107,7 @@ Dans Safari : **Partager → Sur l'écran d'accueil**. L'agenda s'ouvre alors en
 | **iPhone** | Ouvre [le site](https://agenda-evals-0885.netlify.app) dans Safari, puis **Partager → Sur l'écran d'accueil**. |
 | **Navigateur** | Va sur **[agenda-evals-0885.netlify.app](https://agenda-evals-0885.netlify.app)**. |
 
-Le mot de passe de la classe se demande au délégué. Il n'est écrit nulle part dans ce dépôt.
+Au premier lancement, l'agenda demande juste ton prénom.
 
 <details>
 <summary><b>macOS dit que l'app « ne peut pas être ouverte » ?</b></summary>
@@ -156,7 +170,7 @@ Les apps Mac et Windows sont des fenêtres [Electron](https://www.electronjs.org
 | API | [Netlify Functions](https://docs.netlify.com/functions/overview/) (Node.js) |
 | Stockage | [Netlify Blobs](https://docs.netlify.com/blobs/overview/) pour les évals, [Cloudflare R2](https://developers.cloudflare.com/r2/) pour les PDF |
 | PDF | [Cloudflare Worker](https://developers.cloudflare.com/workers/) avec liens signés (HMAC) |
-| Connexion | Mot de passe partagé, cookie de session `HttpOnly` signé |
+| Compression et conversion | [pdf-lib](https://pdf-lib.js.org/) et Canvas, directement dans le navigateur |
 | Apps de bureau | [Electron](https://www.electronjs.org/) et [electron-builder](https://www.electron.build/) |
 | Builds | [GitHub Actions](https://github.com/Tauwni/AgendaDCG/actions) sur macOS et Windows |
 
@@ -173,7 +187,6 @@ Il faut [Node.js](https://nodejs.org/) 20 ou plus et la [CLI Netlify](https://do
 git clone https://github.com/Tauwni/AgendaDCG.git
 cd AgendaDCG
 npm install
-echo "AGENDA_PASSWORD=un-mot-de-passe" > .env
 netlify dev
 ```
 
@@ -188,7 +201,7 @@ echo "SIGNING_SECRET=un-secret" > .dev.vars
 npx wrangler dev --port 8787
 ```
 
-et ajoute au `.env` du projet `PDF_WORKER_URL=http://localhost:8787` et `PDF_SIGNING_SECRET=un-secret`. Sans Worker, l'agenda garde l'ancien envoi via Netlify, limité à 5,5 Mo.
+et crée un `.env` à la racine du projet avec `PDF_WORKER_URL=http://localhost:8787` et `PDF_SIGNING_SECRET=un-secret`. Sans Worker, l'agenda garde l'ancien envoi via Netlify, limité à 5,5 Mo.
 
 </details>
 
@@ -235,7 +248,8 @@ git push origin v1.0.1
 ```
 AgendaDCG/
 ├── public/
-│   └── index.html          # Interface : calendrier, fiches d'éval, envoi de PDF
+│   ├── index.html          # Interface : calendrier, fiches d'éval, envoi de PDF
+│   └── pdf-tools.js        # Compression des PDF et conversion des photos
 ├── netlify/functions/
 │   └── api.mjs             # API : connexion, évals, PDF
 ├── pdf-worker/
