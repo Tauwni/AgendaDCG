@@ -35,7 +35,7 @@ const hashPin = (pin, salt) => scryptSync(String(pin), salt, 32).toString("hex")
 
 const MAX_PDF = 100 * 1024 * 1024;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const SLOTS = { cours: "la fiche de cours", sujet: "le sujet type", corrige: "le corrigé" };
+const SLOTS = { cours: "la fiche de cours", sujet: "le sujet type", corrige: "le corrigé", topexo: "le TOP EXO du prof" };
 const COLORS = ["red", "orange", "yellow", "green", "blue", "purple", "brown"];
 const CATEGORIES = ["controle", "devoir", "examen", "entrainement"];
 const REMINDERS = [1, 2, 7];
@@ -329,7 +329,7 @@ export default async (req) => {
       if (error) return json({ error }, 400);
       const now = new Date().toISOString();
       const full = {
-        id: randomUUID(), ...ch, files: { cours: null, sujet: null, corrige: null },
+        id: randomUUID(), ...ch, files: { cours: null, sujet: null, corrige: null, topexo: null },
         createdBy: by, createdAt: now, updatedBy: by, updatedAt: now,
         history: [{ by, at: now, action: "a créé le chapitre" }],
       };

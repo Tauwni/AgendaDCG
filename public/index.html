@@ -1120,7 +1120,8 @@ function openMonthPicker() {
 
 const MAX_PDF_MB = 100;
 const MAX_INPUT_MB = 300;
-const SLOTS = [["cours", "Fiche de cours"], ["sujet", "Sujet type"], ["corrige", "Corrigé du sujet"]];
+const SLOTS = [["cours", "Fiche de cours"], ["sujet", "Sujet type"], ["corrige", "Corrigé du sujet"], ["topexo", "TOP EXO du prof"]];
+const OPTIONAL_SLOTS = new Set(["topexo"]);
 const DCG_UES = [
   "UE1 · Fondamentaux du droit", "UE2 · Droit des sociétés", "UE3 · Droit social", "UE4 · Droit fiscal",
   "UE5 · Économie contemporaine", "UE6 · Finance d'entreprise", "UE7 · Management", "UE8 · Systèmes d'information de gestion",
@@ -1276,7 +1277,7 @@ const ICON = {
   check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`,
 };
 const ACCEPT = "application/pdf,.pdf,image/png,image/jpeg,image/heic,.png,.jpg,.jpeg,.heic";
-const slotChips = (ch) => SLOTS.map(([k, label]) => `<span class="chip ${ch.files[k] ? "on" : ""}">${ch.files[k] ? ICON.check : ""}${label.split(" ")[0]}</span>`).join("");
+const slotChips = (ch) => SLOTS.filter(([k]) => !OPTIONAL_SLOTS.has(k) || ch.files[k]).map(([k, label]) => `<span class="chip ${ch.files[k] ? "on" : ""}">${ch.files[k] ? ICON.check : ""}${k === "topexo" ? "TOP EXO" : label.split(" ")[0]}</span>`).join("");
 
 
 function upsert(ev) {
@@ -1471,7 +1472,7 @@ function renderCours() {
 }
 
 function slotRows(ch, { editable }) {
-  return SLOTS.map(([k, label]) => {
+  return SLOTS.filter(([k]) => editable || !OPTIONAL_SLOTS.has(k) || ch.files[k]).map(([k, label]) => {
     const f = ch.files[k];
     if (f) {
       return `<div class="file">
