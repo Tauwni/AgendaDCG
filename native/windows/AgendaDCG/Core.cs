@@ -22,6 +22,7 @@ public class AgendaEvent
     public string? Notes { get; set; }
     public List<string>? Chapters { get; set; }
     public string? CreatedBy { get; set; }
+    public string? CreatedAt { get; set; }
     public string? UpdatedBy { get; set; }
     public string? End { get; set; }
     [JsonIgnore] public bool IsDeadline => Data.Deadline.Contains(Kind);

@@ -15,6 +15,7 @@ struct AgendaEvent: Codable, Identifiable, Hashable {
     var notes: String?
     var chapters: [String]?
     var createdBy: String?
+    var createdAt: String?
     var updatedBy: String?
     var updatedAt: String?
     var history: [HistoryEntry]?

@@ -71,7 +71,7 @@ public class MainWindow : Window
 
     async Task Start()
     {
-        if (Environment.GetEnvironmentVariable("AGENDA_DEMO") == "1") { Demo.Load(); tab = Environment.GetEnvironmentVariable("AGENDA_TAB") ?? "today"; ShowShell(); return; }
+        if (Environment.GetEnvironmentVariable("AGENDA_DEMO") == "1") { Demo.Load(); var t = (Environment.GetEnvironmentVariable("AGENDA_TAB") ?? "today").Split('-'); tab = t[0]; if (t.Length > 1) view = t[1]; ShowShell(); return; }
         try
         {
             S.Profile = await Api.Get<Profile>("profile");
@@ -289,6 +289,7 @@ public class MainWindow : Window
 
     UIElement AgendaPage()
     {
+        if (view == "cahier") return CahierPage();
         var title = view == "month"
             ? Data.Cap(month.ToString("MMMM yyyy", Data.Fr))
             : $"Semaine {System.Globalization.ISOWeek.GetWeekOfYear(week)} · {week.Day} – {week.AddDays(6).ToString("d MMMM", Data.Fr)}";
@@ -296,7 +297,8 @@ public class MainWindow : Window
         titleBtn.Background = Brushes.Transparent; titleBtn.Padding = new Thickness(0);
         var toggle = H(0,
             Btn("Mois", () => { view = "month"; month = new DateTime(Data.Parse(selected).Year, Data.Parse(selected).Month, 1); Render(); }, primary: view == "month"),
-            Btn("Semaine", () => { view = "week"; week = Data.Monday(Data.Parse(selected)); Render(); }, primary: view == "week"));
+            Btn("Semaine", () => { view = "week"; week = Data.Monday(Data.Parse(selected)); Render(); }, primary: view == "week"),
+            Btn("Cahier", () => { view = "cahier"; Render(); }, primary: view == "cahier"));
         var head = new DockPanel { Margin = new Thickness(0, 0, 0, 10) };
         var right = H(6, toggle, Btn("Aujourd'hui", () => { month = new(DateTime.Today.Year, DateTime.Today.Month, 1); week = Data.Monday(DateTime.Today); selected = Data.Iso(DateTime.Today); Render(); }),
             IconBtn("", () => Go(-1), "Précédent"), IconBtn("", () => Go(1), "Suivant"), Btn("+ Ajouter", () => Dialogs.EventEditor(null, selected), primary: true));
@@ -387,38 +389,120 @@ public class MainWindow : Window
         return g;
     }
 
+    const int StartH = 8, EndH = 19, HourH = 48;
+    static int Min(string t) { var p = t.Split(':'); return int.Parse(p[0]) * 60 + (p.Length > 1 ? int.Parse(p[1]) : 0); }
+
+    /// Semaine façon emploi du temps (ENT) : grille horaire 8 h – 19 h.
     Panel WeekGrid()
     {
         var today = Data.Iso(DateTime.Today);
-        var g = new Grid { Margin = new Thickness(0, 0, 0, 16) };
-        for (var i = 0; i < 7; i++)
+        var days = Enumerable.Range(0, 7).Select(i => Data.Iso(week.AddDays(i))).Where((d, i) => i < 5 || S.On(d).Count > 0).ToList();
+        var root = new DockPanel();
+        var head = new Grid(); var allDay = new Grid(); var body = new Grid();
+        foreach (var g in new[] { head, allDay, body })
         {
-            g.ColumnDefinitions.Add(new ColumnDefinition());
-            var d = week.AddDays(i);
-            var day = Data.Iso(d);
-            var col = new StackPanel();
-            col.Children.Add(H(6, T(d.ToString("ddd", Data.Fr), 12, null, Theme.Text2), T(d.Day.ToString(), 18, FontWeights.Bold, day == today ? Theme.Accent : Theme.Text)));
-            if (Data.Holiday(day) is { } h) col.Children.Add(T(h, 11, null, Theme.Orange));
-            else if (S.IsCompanyDay(day)) col.Children.Add(T("Entreprise", 11, null, Theme.Text2));
-            foreach (var e in S.On(day))
-            {
-                var inner = new StackPanel();
-                if (e.TimeLabel != null) inner.Children.Add(T(e.TimeLabel, 11, FontWeights.Bold));
-                var t = new TextBlock { Text = e.Title, FontSize = 12, FontWeight = FontWeights.SemiBold, Foreground = Theme.Text, TextWrapping = TextWrapping.Wrap };
-                if (S.IsDone(e)) t.TextDecorations = TextDecorations.Strikethrough;
-                inner.Children.Add(t);
-                inner.Children.Add(T(Data.KindLabel(e.Kind), 11, null, Theme.Text2));
-                var ev = e;
-                var card = new Border { Child = inner, Background = Theme.Of(e.Color, (byte)(S.IsDone(e) ? 25 : 60)), BorderBrush = Theme.Of(e.Color), BorderThickness = new Thickness(3, 0, 0, 0), CornerRadius = new CornerRadius(6), Padding = new Thickness(6), Margin = new Thickness(0, 6, 0, 0), Cursor = Cursors.Hand };
-                card.MouseLeftButtonUp += (_, x) => { if (ev.IsClass) Dialogs.ClassDetail(ev); else Dialogs.EventDetail(ev); x.Handled = true; };
-                col.Children.Add(card);
-            }
-            var b = new Border { Child = new ScrollViewer { Content = col, VerticalScrollBarVisibility = ScrollBarVisibility.Auto }, Padding = new Thickness(8), Margin = new Thickness(4), CornerRadius = new CornerRadius(10), Background = day == today ? Theme.Of("red", 18) : Theme.Card };
-            b.MouseLeftButtonDown += (_, x) => { if (x.ClickCount == 2) Dialogs.EventEditor(null, day); };
-            Grid.SetColumn(b, i);
-            g.Children.Add(b);
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(46) });
+            foreach (var _ in days) g.ColumnDefinitions.Add(new ColumnDefinition());
         }
-        return g;
+        var gut = T("Journée", 11, null, Theme.Text2); gut.HorizontalAlignment = HorizontalAlignment.Right; gut.Margin = new Thickness(0, 4, 6, 0);
+        allDay.Children.Add(gut);
+        var hours = new StackPanel();
+        for (var h = StartH; h < EndH; h++) { var t = T($"{h} h", 11, null, Theme.Text2); t.Height = HourH; t.HorizontalAlignment = HorizontalAlignment.Right; t.Margin = new Thickness(0, -7, 6, 7); hours.Children.Add(t); }
+        body.Children.Add(hours);
+        for (var i = 0; i < days.Count; i++)
+        {
+            var day = days[i]; var d = Data.Parse(day);
+            var num = T(d.Day.ToString(), 17, FontWeights.SemiBold, day == today ? Brushes.White : Theme.Text); num.HorizontalAlignment = HorizontalAlignment.Center; num.VerticalAlignment = VerticalAlignment.Center;
+            var hd = V(2, T(d.ToString("ddd", Data.Fr), 12, null, Theme.Text2), new Border { Width = 32, Height = 32, CornerRadius = new CornerRadius(16), Background = day == today ? Theme.Accent : Brushes.Transparent, Child = num });
+            foreach (FrameworkElement c in hd.Children) c.HorizontalAlignment = HorizontalAlignment.Center;
+            hd.Margin = new Thickness(0, 0, 0, 6);
+            Grid.SetColumn(hd, i + 1); head.Children.Add(hd);
+
+            var chips = new StackPanel { Margin = new Thickness(2) };
+            foreach (var e in S.On(day).Where(e => string.IsNullOrEmpty(e.Time)))
+            {
+                var ev = e;
+                var t = T(e.Title, 11.5, FontWeights.SemiBold); if (S.IsDone(e)) t.TextDecorations = TextDecorations.Strikethrough;
+                var chip = new Border { Child = t, Background = Theme.Of(e.Color, 50), CornerRadius = new CornerRadius(5), Padding = new Thickness(6, 3, 6, 3), Margin = new Thickness(0, 0, 0, 3), Cursor = Cursors.Hand };
+                chip.MouseLeftButtonUp += (_, x) => { Dialogs.EventDetail(ev); x.Handled = true; };
+                chips.Children.Add(chip);
+            }
+            Grid.SetColumn(chips, i + 1); allDay.Children.Add(chips);
+
+            var timed = S.On(day).Where(e => !string.IsNullOrEmpty(e.Time)).ToList();
+            var note = Data.Holiday(day) ?? (S.IsCompanyDay(day) && timed.Count == 0 ? "Entreprise" : null);
+            var canvas = new Canvas { Height = HourH * (EndH - StartH), Background = note != null ? Theme.Of("brown", 14) : day == selected ? Theme.Of("red", 10) : Brushes.Transparent, Margin = new Thickness(2, 0, 2, 0), ClipToBounds = true };
+            for (var h = 0; h < EndH - StartH; h++) { var l = new Rectangle { Height = 1, Fill = Theme.Line }; Canvas.SetTop(l, h * HourH); l.SetBinding(WidthProperty, new System.Windows.Data.Binding("ActualWidth") { Source = canvas }); canvas.Children.Add(l); }
+            if (note != null) { var nt = T(note, 12, FontWeights.SemiBold, Theme.Text2); nt.TextAlignment = TextAlignment.Center; Canvas.SetTop(nt, HourH * 4); nt.SetBinding(WidthProperty, new System.Windows.Data.Binding("ActualWidth") { Source = canvas }); canvas.Children.Add(nt); }
+            var ends = new List<int>(); var lane = new List<int>();
+            foreach (var e in timed) { var a0 = Min(e.Time!); var b0 = e.End != null ? Min(e.End) : a0 + 60; var li = ends.FindIndex(x => x <= a0); if (li < 0) { ends.Add(b0); li = ends.Count - 1; } else ends[li] = b0; lane.Add(li); }
+            var n = Math.Max(1, ends.Count);
+            for (var k = 0; k < timed.Count; k++)
+            {
+                var e = timed[k]; var ev = e;
+                var a = Math.Max(Min(e.Time!), StartH * 60); var b = Math.Min(Math.Max(e.End != null ? Min(e.End) : a + 60, a + 30), EndH * 60);
+                var inner = new StackPanel();
+                var tt = new TextBlock { Text = e.Title, FontSize = 12, FontWeight = FontWeights.SemiBold, Foreground = Theme.Text, TextWrapping = TextWrapping.Wrap };
+                if (S.IsDone(e)) tt.TextDecorations = TextDecorations.Strikethrough;
+                inner.Children.Add(tt);
+                inner.Children.Add(T((e.TimeLabel ?? "") + (e.IsClass ? "" : " · " + Data.KindLabel(e.Kind)), 11, null, Theme.Text2));
+                var block = new Border { Child = inner, Background = Theme.Of(e.Color, (byte)(S.IsDone(e) ? 25 : e.IsClass ? 75 : 55)), BorderBrush = Theme.Of(e.Color), BorderThickness = new Thickness(3, 0, 0, 0), CornerRadius = new CornerRadius(6), Padding = new Thickness(6, 4, 4, 4), Height = (b - a) / 60.0 * HourH - 2, Cursor = Cursors.Hand };
+                block.MouseLeftButtonUp += (_, x) => { if (ev.IsClass) Dialogs.ClassDetail(ev); else Dialogs.EventDetail(ev); x.Handled = true; };
+                var laneI = lane[k];
+                canvas.SizeChanged += (_, _) => { block.Width = Math.Max(10, canvas.ActualWidth / n - 3); Canvas.SetLeft(block, laneI * canvas.ActualWidth / n); };
+                Canvas.SetTop(block, (a - StartH * 60) / 60.0 * HourH + 1);
+                canvas.Children.Add(block);
+            }
+            if (day == today)
+            {
+                var now = DateTime.Now.Hour * 60 + DateTime.Now.Minute;
+                if (now > StartH * 60 && now < EndH * 60) { var line = new Rectangle { Height = 2, Fill = Theme.Accent }; line.SetBinding(WidthProperty, new System.Windows.Data.Binding("ActualWidth") { Source = canvas }); Canvas.SetTop(line, (now - StartH * 60) / 60.0 * HourH); canvas.Children.Add(line); }
+            }
+            var dd = day;
+            canvas.MouseLeftButtonDown += (_, x) => { if (x.ClickCount == 2) Dialogs.EventEditor(null, dd); else selected = dd; };
+            Grid.SetColumn(canvas, i + 1); body.Children.Add(canvas);
+        }
+        DockPanel.SetDock(head, Dock.Top); root.Children.Add(head);
+        var sep = new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = allDay, Margin = new Thickness(0, 0, 0, 8) };
+        DockPanel.SetDock(sep, Dock.Top); root.Children.Add(sep);
+        root.Children.Add(new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
+        return root;
+    }
+
+    /// Cahier de texte : devoirs et évaluations à rendre, groupés par date.
+    UIElement CahierPage()
+    {
+        var today = Data.Iso(DateTime.Today);
+        var weekAgo = DateTime.UtcNow.AddDays(-7).ToString("yyyy-MM-ddTHH:mm:ss");
+        var work = S.Events.Where(e => e.IsDeadline).OrderBy(e => e.SortKey).ToList();
+        var todo = work.Where(e => string.CompareOrdinal(e.Date, today) >= 0 && !S.IsDone(e)).ToList();
+        var late = work.Where(e => string.CompareOrdinal(e.Date, today) < 0 && !S.IsDone(e) && (DateTime.Today - Data.Parse(e.Date)).Days <= 30).ToList();
+        var fresh = work.Count(e => string.CompareOrdinal(e.Date, today) >= 0 && string.CompareOrdinal(e.CreatedAt ?? "", weekAgo) >= 0);
+        var body = new StackPanel { MaxWidth = 760, HorizontalAlignment = HorizontalAlignment.Left };
+        body.Children.Add(T(todo.Count == 0 ? "Tout est fait 🎉" : $"{todo.Count} {(todo.Count > 1 ? "travaux" : "travail")} à faire" + (fresh > 0 ? $" · {fresh} nouveau{(fresh > 1 ? "x" : "")} cette semaine" : ""), 14, null, Theme.Text2));
+        void Group(string title, IEnumerable<AgendaEvent> list, bool showDate)
+        {
+            var h = T(title.ToUpper(), 12, FontWeights.SemiBold, Theme.Text2); h.Margin = new Thickness(0, 20, 0, 8); body.Children.Add(h);
+            foreach (var e in list)
+            {
+                var row = EventRow(e, showDate);
+                if (string.CompareOrdinal(e.CreatedAt ?? "", weekAgo) >= 0)
+                {
+                    var g = new Grid(); g.Children.Add(row);
+                    var tag = T("Nouveau", 11, FontWeights.Bold, Theme.Blue); tag.HorizontalAlignment = HorizontalAlignment.Right; tag.VerticalAlignment = VerticalAlignment.Top; tag.Margin = new Thickness(0, 8, 52, 0);
+                    g.Children.Add(tag); body.Children.Add(g);
+                }
+                else body.Children.Add(row);
+            }
+        }
+        if (late.Count > 0) Group("En retard", late, true);
+        foreach (var d in todo.Select(e => e.Date).Distinct())
+        {
+            var n = (Data.Parse(d) - DateTime.Today).Days;
+            Group(n == 0 ? "Pour aujourd'hui" : n == 1 ? "Pour demain" : $"Pour {Data.LongDate(d)}", todo.Where(e => e.Date == d), false);
+        }
+        var toggle = H(0, Btn("Mois", () => { view = "month"; Render(); }), Btn("Semaine", () => { view = "week"; Render(); }), Btn("Cahier", () => { }, primary: true));
+        return Page("Cahier de texte", Scroll(body), toggle, Btn("+ Nouveau devoir", () => Dialogs.EventEditor(null, Data.Iso(DateTime.Today.AddDays(1)), "devoir"), primary: true));
     }
 
     // ---------- Cours ----------
@@ -443,13 +527,7 @@ public class MainWindow : Window
         if (chs.Count == 0) chapters.Children.Add(T("Aucun chapitre pour l'instant.", 14, null, Theme.Text2));
         foreach (var ch in chs)
         {
-            var head = new DockPanel();
-            var actions = H(4, IconBtn("", () => Dialogs.ChapterEditor(ch, ch.Subject), "Renommer"),
-                IconBtn("", async () => { if (Confirm($"Supprimer « {ch.Title} » et ses PDF pour toute la classe ?")) await Try(() => S.DeleteChapter(ch)); }, "Supprimer"));
-            DockPanel.SetDock(actions, Dock.Right);
-            head.Children.Add(actions);
-            head.Children.Add(T(ch.Title, 15, FontWeights.SemiBold));
-            var card = Card(V(8, head, Dialogs.ChapterFiles(ch, true)));
+            var card = Card(V(8, T(ch.Title, 15, FontWeights.SemiBold), Dialogs.ChapterFiles(ch, false, false)));
             card.Margin = new Thickness(0, 12, 0, 0);
             chapters.Children.Add(card);
         }
@@ -458,7 +536,7 @@ public class MainWindow : Window
         g.ColumnDefinitions.Add(new ColumnDefinition());
         g.Children.Add(Scroll(list));
         var right = Scroll(chapters); Grid.SetColumn(right, 1); g.Children.Add(right);
-        return Page("Cours", g, Btn("+ Nouveau chapitre", () => Dialogs.ChapterEditor(null, coursSubject!), primary: true));
+        return Page("Cours", g);
     }
 
     // ---------- Notes ----------

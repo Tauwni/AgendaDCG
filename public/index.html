@@ -282,6 +282,7 @@ input, textarea { font: inherit; color: var(--text); }
 .kind-badge .kind-ico { width: 13px; height: 13px; vertical-align: -2px; margin-right: 4px; }
 .ev .kind-ico { width: 14px; height: 14px; vertical-align: -2px; margin-right: 3px; color: var(--c); }
 .ev.late .meta .late-tag { color: var(--accent); font-weight: 600; }
+.ev .meta .late-tag[style] { color: var(--c); font-weight: 600; }
 .jtag { font-size: 12px; font-weight: 700; padding: 2px 7px; border-radius: 8px; background: color-mix(in srgb, var(--c) 15%, transparent); color: var(--c); }
 
 /* Kinds picker */
@@ -293,7 +294,7 @@ input, textarea { font: inherit; color: var(--text); }
 
 /* Agenda header */
 .agenda-tools { display: flex; align-items: center; gap: 8px; }
-.view-toggle { display: grid; grid-template-columns: 1fr 1fr; background: var(--line); border-radius: 9px; padding: 2px; }
+.view-toggle { display: grid; grid-template-columns: 1fr 1fr 1fr; background: var(--line); border-radius: 9px; padding: 2px; }
 .view-toggle button { padding: 5px 12px; border-radius: 7px; font-size: 13px; font-weight: 500; transition: background-color .25s, box-shadow .25s; }
 .view-toggle button.on { background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.12); font-weight: 600; }
 .month-title { cursor: pointer; display: inline-flex; align-items: baseline; gap: 8px; }
@@ -308,6 +309,36 @@ input, textarea { font: inherit; color: var(--text); }
 .day.holiday .num { color: var(--text2); }
 .pill.holiday-pill { --c: var(--text2); font-weight: 400; }
 .dot.holiday-dot { background: var(--text2); opacity: .6; }
+.tt { display: grid; grid-template-columns: 44px repeat(var(--days), minmax(0, 1fr)); column-gap: 3px; }
+.tt-head { display: flex; flex-direction: column; align-items: center; padding: 4px 0 8px; font-size: 12px; color: var(--text2); }
+.tt-head b { font-size: 18px; color: var(--text); font-weight: 600; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; }
+.tt-head.today b { background: var(--accent); color: #fff; }
+.tt-gut, .tt-hours div { font-size: 11px; color: var(--text2); text-align: right; padding-right: 6px; }
+.tt-gut { padding-top: 6px; }
+.tt-allday { min-height: 30px; display: flex; flex-direction: column; gap: 3px; padding: 3px 0; border-top: .5px solid var(--line); }
+.tt-chip { display: flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; text-align: left; padding: 4px 6px; border-radius: 6px; background: color-mix(in srgb, var(--c) 18%, transparent); color: var(--text); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tt-chip .kind-ico { width: 12px; height: 12px; flex: none; color: var(--c); }
+.tt-hours { display: grid; grid-template-rows: repeat(11, 52px); }
+.tt-hours div { transform: translateY(-7px); }
+.tt-col { position: relative; display: grid; grid-template-rows: repeat(11, 52px); border-radius: 8px; }
+.tt-cell { border-top: .5px solid var(--line); }
+.tt-col.work { background: repeating-linear-gradient(-45deg, transparent 0 8px, color-mix(in srgb, var(--text2) 7%, transparent) 8px 16px); }
+.tt-col.off { background: color-mix(in srgb, var(--text2) 8%, transparent); }
+.tt-col.selected { background-color: color-mix(in srgb, var(--accent) 5%, transparent); }
+.tt-note { position: absolute; top: 40%; left: 0; right: 0; text-align: center; font-size: 12px; color: var(--text2); font-weight: 500; }
+.tt-block { position: absolute; display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 5px 7px; border-radius: 8px; overflow: hidden; background: color-mix(in srgb, var(--c) 22%, var(--card)); border-left: 3px solid var(--c); font-size: 12px; transition: transform .2s; }
+.tt-block b { font-size: 12.5px; line-height: 1.2; }
+.tt-block span { color: var(--text2); font-size: 11px; }
+.tt-block:hover { transform: scale(1.02); z-index: 2; }
+.tt-block.class { background: color-mix(in srgb, var(--c) 30%, var(--card)); }
+.tt-ev.done { opacity: .45; text-decoration: line-through; }
+.tt-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--accent); z-index: 3; }
+.tt-now::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+@media (max-width: 700px) { .view-toggle button { padding: 5px 8px; font-size: 12.5px; } .topbar .left { gap: 0; } .tt { grid-template-columns: 30px repeat(var(--days), minmax(0, 1fr)); column-gap: 2px; } .tt-block { padding: 4px; } .tt-block b { font-size: 11px; } .tt-block span { display: none; } .tt-hours div { font-size: 10px; padding-right: 3px; } }
+.cahier { max-width: 760px; }
+.cahier-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.cahier-add { white-space: nowrap; width: auto; font-size: 15px; font-weight: 600; padding: 9px 16px; }
+.cahier-mode .weekdays, .cahier-mode .topbar .left { visibility: hidden; }
 .revise-card { display: flex; gap: 16px; align-items: flex-start; padding: 18px; }
 .revise-card img { border-radius: 14px; flex: none; }
 .revise-card b { font-size: 18px; }
@@ -462,6 +493,7 @@ input, textarea { font: inherit; color: var(--text); }
         <div class="view-toggle" role="tablist" aria-label="Affichage">
           <button data-view="month" role="tab">Mois</button>
           <button data-view="week" role="tab">Semaine</button>
+          <button data-view="cahier" role="tab">Cahier</button>
         </div>
         <button class="icon-btn" id="addBtn" aria-label="Ajouter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
       </div>
@@ -525,7 +557,7 @@ const kindLabel = (k) => (KINDS[k] || KINDS.eval).label;
 
 const state = {
   events: [], chapters: [], profile: null, tab: "today",
-  view: (() => { try { return localStorage.getItem("agenda_view") === "week" ? "week" : "month"; } catch { return "month"; } })(),
+  view: (() => { try { const v = localStorage.getItem("agenda_view"); return ["week", "cahier"].includes(v) ? v : "month"; } catch { return "month"; } })(),
   month: firstOfMonth(new Date()), weekStart: mondayOf(new Date()), selected: iso(new Date()),
 };
 
@@ -813,7 +845,7 @@ function evCard(e, opts = {}) {
     <span class="body">
       <div class="t">${esc(e.title)}</div>
       ${e.subject && !opts.compact ? `<div class="s">${esc(e.subject)}</div>` : ""}
-      <div class="meta"><span>${kindIcon(kind)}${kindLabel(kind)}${parts ? " · " + esc(parts) : ""}</span>${late && opts.showLate ? `<span class="late-tag">En retard</span>` : ""}${n && !opts.compact ? `<span>${clip} ${plural(n, "chapitre")}</span>` : ""}</div>
+      <div class="meta"><span>${kindIcon(kind)}${kindLabel(kind)}${parts ? " · " + esc(parts) : ""}</span>${late && opts.showLate ? `<span class="late-tag">En retard</span>` : ""}${opts.fresh && !isDone(e.id) ? `<span class="late-tag" style="--c:var(--blue)">Nouveau</span>` : ""}${n && !opts.compact ? `<span>${clip} ${plural(n, "chapitre")}</span>` : ""}</div>
     </span>
     ${j !== null && j >= 0 ? `<span class="jtag" style="align-self:center">${j === 0 ? "Aujourd'hui" : j === 1 ? "Demain" : "J-" + j}</span>` : ""}
     ${e.virtual ? "" : `<button class="check" data-done="${e.id}" aria-label="${isDone(e.id) ? "Marquer à faire" : "Marquer comme fait"}">${checkSvg}</button>`}
@@ -823,7 +855,7 @@ function evCard(e, opts = {}) {
 document.addEventListener("click", (e) => {
   const check = e.target.closest("[data-done]");
   if (check) { e.stopPropagation(); toggleDone(check.dataset.done); return; }
-  const card = e.target.closest(".ev");
+  const card = e.target.closest(".ev, .tt-ev");
   if (card) openDetail(card.dataset.id);
 });
 document.addEventListener("keydown", (e) => {
@@ -942,23 +974,76 @@ function monthHtml() {
   return `<div class="grid" id="grid">${html}</div>`;
 }
 
+/* Semaine façon emploi du temps (ENT) : grille horaire 8 h – 19 h */
+const TT_START = 8, TT_END = 19;
+const toMin = (t) => { const [h, m] = String(t).split(":").map(Number); return h * 60 + (m || 0); };
 function weekHtml() {
   const map = byDate();
   const today = iso(new Date());
-  let html = "";
+  const days = [];
   for (let i = 0; i < 7; i++) {
-    const d = addDays(state.weekStart, i);
-    const key = iso(d);
-    const evs = map[key] || [];
-    const fer = dayNote(key);
-    const cls = ["wday", key === today && "today", key === state.selected && "selected", d.getDay() % 6 === 0 && "weekend", fer && "holiday"].filter(Boolean).join(" ");
-    html += `<section class="${cls}" data-date="${key}">
-      <button class="wday-head" data-date="${key}" aria-label="${longDate(key)}"><span class="wd-name">${DAYS[d.getDay()].slice(0, 3)}</span><span class="wd-num">${d.getDate()}</span></button>
-      <div class="wday-list">${fer ? `<div class="holiday-row">${esc(fer)}</div>` : ""}${evs.length ? evs.map((e) => evCard(e, { compact: true })).join("") : fer ? "" : `<div class="wday-free">—</div>`}</div>
-    </section>`;
+    const key = iso(addDays(state.weekStart, i));
+    if (i < 5 || (map[key] || []).length) days.push(key);
   }
-  return `<div class="week">${html}</div>`;
+  const hours = Array.from({ length: TT_END - TT_START }, (_, i) => TT_START + i);
+  const allDay = days.map((key) => {
+    const evs = (map[key] || []).filter((e) => !e.time);
+    return `<div class="tt-allday">${evs.map((e) => `<button class="tt-chip" data-id="${e.id}" style="--c:${col(e.color)}">${kindIcon(e.kind || "eval")}${esc(e.title)}</button>`.replace('class="tt-chip"', `class="tt-chip tt-ev ${isDone(e.id) ? "done" : ""}"`)).join("")}</div>`;
+  }).join("");
+  const cols = days.map((key) => {
+    const d = parse(key);
+    const fer = holiday(key), work = companyDay(key);
+    const timed = (map[key] || []).filter((e) => e.time).map((e) => {
+      const a = Math.max(toMin(e.time), TT_START * 60), b = Math.min(e.end ? toMin(e.end) : toMin(e.time) + 60, TT_END * 60);
+      return { e, a, b: Math.max(b, a + 30) };
+    }).sort((x, y) => x.a - y.a);
+    const lanes = [];
+    for (const t of timed) { let l = lanes.findIndex((end) => end <= t.a); if (l < 0) { l = lanes.length; lanes.push(0); } lanes[l] = t.b; t.lane = l; }
+    const n = Math.max(1, lanes.length);
+    const blocks = timed.map(({ e, a, b, lane }) => {
+      const top = ((a - TT_START * 60) / 60) * 100 / (TT_END - TT_START), h = ((b - a) / 60) * 100 / (TT_END - TT_START);
+      return `<button class="tt-block tt-ev ${isDone(e.id) ? "done" : ""} ${e.virtual ? "class" : ""}" data-id="${e.id}" style="--c:${col(e.color)};top:${top}%;height:${h}%;left:calc(${(lane / n) * 100}% + 2px);width:calc(${100 / n}% - 4px)">
+        <b>${esc(e.title)}</b><span>${esc(e.time)}${e.end ? "–" + esc(e.end) : ""}${!e.virtual ? " · " + kindLabel(e.kind || "eval") : ""}</span></button>`;
+    }).join("");
+    const now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
+    const line = key === today && nowMin > TT_START * 60 && nowMin < TT_END * 60 ? `<div class="tt-now" style="top:${((nowMin - TT_START * 60) / 60) * 100 / (TT_END - TT_START)}%"></div>` : "";
+    return `<div class="tt-col ${work && !timed.length ? "work" : ""} ${fer ? "off" : ""} ${key === state.selected ? "selected" : ""}" data-date="${key}">
+      ${hours.map(() => `<div class="tt-cell"></div>`).join("")}
+      ${fer ? `<div class="tt-note">${esc(fer)}</div>` : work && !timed.length ? `<div class="tt-note">Entreprise</div>` : ""}
+      ${blocks}${line}</div>`;
+  }).join("");
+  const heads = days.map((key) => {
+    const d = parse(key);
+    return `<button class="tt-head ${key === today ? "today" : ""}" data-date="${key}"><span>${DAYS[d.getDay()].slice(0, 3)}.</span><b>${d.getDate()}</b></button>`;
+  }).join("");
+  return `<div class="tt" style="--days:${days.length}">
+    <div></div>${heads}
+    <div class="tt-gut small">Journée</div>${allDay}
+    <div class="tt-hours">${hours.map((h) => `<div>${h} h</div>`).join("")}</div>${cols}
+  </div>`;
 }
+
+/* Cahier de texte : devoirs et évaluations à venir, regroupés par date de rendu */
+function cahierHtml() {
+  const today = iso(new Date());
+  const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
+  const work = state.events.filter((e) => DEADLINE.has(e.kind || "eval"));
+  const todo = work.filter((e) => e.date >= today && !isDone(e.id));
+  const fresh = work.filter((e) => e.date >= today && (e.createdAt || "") >= weekAgo).sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+  const late = work.filter((e) => e.date < today && !isDone(e.id) && daysBetween(e.date, today) <= 30);
+  const groups = {};
+  for (const e of todo) (groups[e.date] ||= []).push(e);
+  const label = (d) => { const n = daysBetween(today, d); return n === 0 ? "Pour aujourd'hui" : n === 1 ? "Pour demain" : `Pour ${dayMonth(d)}`; };
+  const item = (e, opts = {}) => evCard(e, { ...opts, fresh: (e.createdAt || "") >= weekAgo });
+  return `<div class="cahier">
+    <div class="cahier-top"><p class="page-sub">${todo.length ? `${todo.length} ${todo.length > 1 ? "travaux" : "travail"} à faire${fresh.length ? ` · ${fresh.length} nouveau${fresh.length > 1 ? "x" : ""} cette semaine` : ""}` : "Tout est fait 🎉"}</p><button class="btn-row blue cahier-add" data-cahier-add>+ Nouveau devoir</button></div>
+    ${late.length ? `<div class="section"><h2>En retard</h2><div class="list">${late.map((e) => item(e, { withDate: true, showLate: true })).join("")}</div></div>` : ""}
+    ${Object.keys(groups).sort().map((d) => `<div class="section"><h2>${label(d)}</h2><div class="list">${groups[d].map((e) => item(e)).join("")}</div></div>`).join("") || `<div class="invite">Aucun devoir à venir.</div>`}
+  </div>`;
+}
+document.addEventListener("click", (e) => {
+  if (e.target.closest("[data-cahier-add]")) { const d = iso(addDays(new Date(), 1)); openEdit(null, d, { kind: "devoir", title: "", subject: "", date: d, time: "", color: "blue", notes: "", chapters: [] }); }
+});
 
 function renderPanel(animate) {
   const map = byDate();
@@ -974,9 +1059,10 @@ function renderPanel(animate) {
 }
 
 function renderAgenda(animatePanel) {
-  $("#agendaTitle").innerHTML = agendaTitleHtml();
-  $("#viewport").innerHTML = state.view === "month" ? monthHtml() : weekHtml();
-  $("#agendaLayout").classList.toggle("week-mode", state.view === "week");
+  $("#agendaTitle").innerHTML = state.view === "cahier" ? "Cahier de texte" : agendaTitleHtml();
+  $("#viewport").innerHTML = state.view === "month" ? monthHtml() : state.view === "week" ? weekHtml() : cahierHtml();
+  $("#agendaLayout").classList.toggle("week-mode", state.view !== "month");
+  $("#page-agenda").classList.toggle("cahier-mode", state.view === "cahier");
   document.querySelectorAll(".view-toggle [data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === state.view));
   $("#prev").setAttribute("aria-label", state.view === "month" ? "Mois précédent" : "Semaine précédente");
   $("#next").setAttribute("aria-label", state.view === "month" ? "Mois suivant" : "Semaine suivante");
@@ -1052,12 +1138,13 @@ function changeWeek(dir, opts = {}) {
   }, opts.fromX);
 }
 
-const nav = (dir, opts) => (state.view === "week" ? changeWeek(dir, opts) : changeMonth(dir, opts));
+const nav = (dir, opts) => (state.view === "cahier" ? null : state.view === "week" ? changeWeek(dir, opts) : changeMonth(dir, opts));
 
 function setView(view) {
   if (view === state.view) return;
   state.view = view;
   try { localStorage.setItem("agenda_view", view); } catch {}
+  if (view === "cahier") { renderAgenda(false); return; }
   if (view === "week") state.weekStart = mondayOf(parse(state.selected));
   else state.month = firstOfMonth(parse(state.selected));
   renderAgenda(false);
@@ -1082,12 +1169,12 @@ function goToday() {
 }
 
 $("#viewport").addEventListener("click", (e) => {
-  if (e.target.closest(".ev")) return;
+  if (e.target.closest(".ev, .tt-ev")) return;
   const b = e.target.closest("[data-date]");
   if (b && !b.classList.contains("blank")) selectDay(b.dataset.date);
 });
 $("#viewport").addEventListener("dblclick", (e) => {
-  if (e.target.closest(".ev")) return;
+  if (e.target.closest(".ev, .tt-ev")) return;
   const b = e.target.closest("[data-date]");
   if (b) openEdit(null, b.dataset.date);
 });

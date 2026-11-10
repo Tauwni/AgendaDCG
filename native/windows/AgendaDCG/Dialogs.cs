@@ -68,10 +68,10 @@ public static class Dialogs
         w.ShowDialog();
     }
 
-    public static void EventEditor(AgendaEvent? existing, string date)
+    public static void EventEditor(AgendaEvent? existing, string date, string defaultKind = "eval")
     {
         var isNew = existing == null;
-        var ev = existing ?? new AgendaEvent { Date = date, Color = "blue", Chapters = new() };
+        var ev = existing ?? new AgendaEvent { Date = date, Color = "blue", Chapters = new(), Kind = defaultKind };
         var chapters = new HashSet<string>(ev.Chapters ?? new());
         var color = ev.Color ?? "blue";
         Window? w = null;
@@ -169,10 +169,10 @@ public static class Dialogs
         w.ShowDialog();
     }
 
-    public static FrameworkElement ChapterFiles(Chapter chapter, bool editable)
+    public static FrameworkElement ChapterFiles(Chapter chapter, bool editable, bool showTitle = true)
     {
         var panel = new StackPanel();
-        if (!editable) panel.Children.Add(T(chapter.Title, 14, FontWeights.SemiBold));
+        if (showTitle) panel.Children.Add(T(chapter.Title, 14, FontWeights.SemiBold));
         foreach (var (slot, label) in Data.Slots)
         {
             var f = chapter.File(slot);

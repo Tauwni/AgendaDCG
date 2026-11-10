@@ -101,6 +101,14 @@ struct AgendaView: View {
     @State private var picker = false
 
     var body: some View {
+        if view == "cahier" {
+            CahierView()
+                .toolbar {
+                    ToolbarItem { viewPicker }
+                    ToolbarItem { Button { adding = true } label: { Label("Ajouter", systemImage: "plus") } }
+                }
+                .sheet(isPresented: $adding) { EventEditor(event: nil, date: iso(addDays(Date(), 1)), kind: "devoir") }
+        } else {
         VStack(spacing: 0) {
             header
             Divider()
@@ -118,9 +126,7 @@ struct AgendaView: View {
             }
         }
         .toolbar {
-            ToolbarItem {
-                Picker("Vue", selection: $view) { Text("Mois").tag("month"); Text("Semaine").tag("week") }.pickerStyle(.segmented)
-            }
+            ToolbarItem { viewPicker }
             ToolbarItem { Button { adding = true } label: { Label("Ajouter", systemImage: "plus") } }
         }
         .sheet(isPresented: $adding) { EventEditor(event: nil, date: selected) }
@@ -131,6 +137,11 @@ struct AgendaView: View {
         .onKeyPress(.rightArrow) { go(1); return .handled }
         .focusable()
         .focusEffectDisabled()
+        }
+    }
+
+    var viewPicker: some View {
+        Picker("Vue", selection: $view) { Text("Mois").tag("month"); Text("Semaine").tag("week"); Text("Cahier").tag("cahier") }.pickerStyle(.segmented)
     }
 
     var header: some View {
@@ -293,43 +304,169 @@ struct DayList: View {
     }
 }
 
+/// Semaine façon emploi du temps (ENT) : grille horaire 8 h – 19 h.
 struct WeekColumns: View {
     @EnvironmentObject var model: AppModel
     let week: Date
     @Binding var selected: String
     @State private var adding: String?
+    @State private var detail: AgendaEvent?
+    private let startH = 8, endH = 19
+
+    static func minutes(_ t: String) -> Int { let p = t.split(separator: ":").compactMap { Int($0) }; return (p.first ?? 0) * 60 + (p.count > 1 ? p[1] : 0) }
 
     var body: some View {
         let today = iso(Date())
-        HStack(alignment: .top, spacing: 8) {
-            ForEach(0..<7, id: \.self) { i in
-                let d = addDays(week, i)
-                let day = iso(d)
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(alignment: .firstTextBaseline) {
+        let days = (0..<7).map { iso(addDays(week, $0)) }.enumerated().filter { $0.offset < 5 || !model.events(on: $0.element).isEmpty }.map(\.element)
+        VStack(spacing: 0) {
+            HStack(spacing: 4) {
+                Text("").frame(width: 44)
+                ForEach(days, id: \.self) { day in
+                    let d = parseISO(day)
+                    VStack(spacing: 2) {
                         Text(DAYS[cal.component(.weekday, from: d) - 1].prefix(3) + ".").font(.caption).foregroundStyle(.secondary)
-                        Text("\(cal.component(.day, from: d))").font(.title3.bold())
-                            .foregroundStyle(day == today ? .red : .primary)
+                        Text("\(cal.component(.day, from: d))").font(.title3.weight(.semibold))
+                            .foregroundStyle(day == today ? .white : .primary)
+                            .frame(width: 32, height: 32)
+                            .background(day == today ? Color.red : .clear, in: Circle())
                     }
-                    if let h = holiday(day) { Text(h).font(.caption2).foregroundStyle(.orange) }
-                    else if model.isCompanyDay(day) { Label("Entreprise", systemImage: "briefcase").font(.caption2).foregroundStyle(.secondary) }
-                    ScrollView {
-                        VStack(spacing: 6) {
-                            ForEach(model.events(on: day)) { WeekEvent(event: $0) }
+                    .frame(maxWidth: .infinity)
+                    .onTapGesture { selected = day }
+                }
+            }
+            HStack(alignment: .top, spacing: 4) {
+                Text("Journée").font(.caption2).foregroundStyle(.secondary).frame(width: 44, alignment: .trailing)
+                ForEach(days, id: \.self) { day in
+                    VStack(spacing: 3) {
+                        ForEach(model.events(on: day).filter { ($0.time ?? "").isEmpty }) { e in
+                            Label(e.title, systemImage: Kind.icon(e.kind)).font(.caption.weight(.semibold)).lineLimit(1)
+                                .padding(.horizontal, 6).padding(.vertical, 3)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(eventColor(e.color).opacity(0.2), in: RoundedRectangle(cornerRadius: 6))
+                                .strikethrough(model.isDone(e)).opacity(model.isDone(e) ? 0.5 : 1)
+                                .onTapGesture { detail = e }
                         }
                     }
-                    Spacer(minLength: 0)
+                    .frame(maxWidth: .infinity, minHeight: 24, alignment: .top)
                 }
-                .padding(8)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .background(day == today ? Color.red.opacity(0.06) : Color.secondary.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
-                .contentShape(Rectangle())
-                .onTapGesture(count: 2) { adding = day }
-                .onTapGesture { selected = day }
+            }
+            .padding(.vertical, 4)
+            Divider()
+            GeometryReader { geo in
+                let hourH = max(40, geo.size.height / CGFloat(endH - startH))
+                ScrollView {
+                    HStack(alignment: .top, spacing: 4) {
+                        VStack(spacing: 0) {
+                            ForEach(startH..<endH, id: \.self) { h in
+                                Text("\(h) h").font(.caption2).foregroundStyle(.secondary).frame(width: 44, height: hourH, alignment: .topTrailing).offset(y: -6)
+                            }
+                        }
+                        ForEach(days, id: \.self) { day in column(day, hourH: hourH, today: today) }
+                    }
+                    .padding(.top, 6)
+                }
             }
         }
-        .padding(12)
+        .padding(.horizontal, 12)
         .sheet(item: Binding(get: { adding.map { IdString(id: $0) } }, set: { adding = $0?.id })) { EventEditor(event: nil, date: $0.id) }
+        .sheet(item: $detail) { e in if e.isClass { ClassDetail(event: e) } else { EventDetail(event: model.events.first { $0.id == e.id } ?? e) } }
+    }
+
+    @ViewBuilder func column(_ day: String, hourH: CGFloat, today: String) -> some View {
+        let timed = model.events(on: day).filter { !($0.time ?? "").isEmpty }
+        let note = holiday(day) ?? (model.isCompanyDay(day) && timed.isEmpty ? "Entreprise" : nil)
+        ZStack(alignment: .topLeading) {
+            VStack(spacing: 0) {
+                ForEach(startH..<endH, id: \.self) { _ in Rectangle().fill(.clear).frame(height: hourH).overlay(alignment: .top) { Rectangle().fill(.separator).frame(height: 0.5) } }
+            }
+            if let note { Text(note).font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity).offset(y: hourH * 4) }
+            GeometryReader { g in
+                let lanes = Self.lanes(timed)
+                ForEach(Array(timed.enumerated()), id: \.element.id) { i, e in
+                    let a = max(Self.minutes(e.time!), startH * 60)
+                    let b = min(max(e.end.map(Self.minutes) ?? a + 60, a + 30), endH * 60)
+                    let n = CGFloat(lanes.count), w = g.size.width / max(n, 1)
+                    block(e)
+                        .frame(width: w - 3, height: CGFloat(b - a) / 60 * hourH - 2)
+                        .offset(x: CGFloat(lanes.index[i]) * w, y: CGFloat(a - startH * 60) / 60 * hourH + 1)
+                }
+                if day == today {
+                    let c = cal.dateComponents([.hour, .minute], from: Date()), now = c.hour! * 60 + c.minute!
+                    if now > startH * 60 && now < endH * 60 {
+                        Rectangle().fill(.red).frame(height: 2).offset(y: CGFloat(now - startH * 60) / 60 * hourH)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: hourH * CGFloat(endH - startH))
+        .background(note != nil ? Color.secondary.opacity(0.07) : day == selected ? Color.red.opacity(0.05) : .clear, in: RoundedRectangle(cornerRadius: 8))
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) { adding = day }
+        .onTapGesture { selected = day }
+    }
+
+    static func lanes(_ list: [AgendaEvent]) -> (count: Int, index: [Int]) {
+        var ends: [Int] = [], idx: [Int] = []
+        for e in list {
+            let a = minutes(e.time ?? "0"), b = e.end.map(minutes) ?? a + 60
+            if let l = ends.firstIndex(where: { $0 <= a }) { ends[l] = b; idx.append(l) } else { ends.append(b); idx.append(ends.count - 1) }
+        }
+        return (ends.count, idx)
+    }
+
+    func block(_ e: AgendaEvent) -> some View {
+        let done = model.isDone(e)
+        return VStack(alignment: .leading, spacing: 2) {
+            Text(e.title).font(.caption.weight(.semibold)).strikethrough(done)
+            Text((e.timeLabel ?? "") + (e.isClass ? "" : " · " + Kind.label(e.kind))).font(.caption2).foregroundStyle(.secondary)
+        }
+        .padding(5)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(eventColor(e.color).opacity(done ? 0.1 : e.isClass ? 0.3 : 0.22), in: RoundedRectangle(cornerRadius: 7))
+        .overlay(alignment: .leading) { RoundedRectangle(cornerRadius: 2).fill(eventColor(e.color)).frame(width: 3) }
+        .clipped()
+        .onTapGesture { detail = e }
+    }
+}
+
+/// Cahier de texte : devoirs et évaluations à rendre, groupés par date.
+struct CahierView: View {
+    @EnvironmentObject var model: AppModel
+    var body: some View {
+        let today = iso(Date())
+        let weekAgo = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-7 * 86400))
+        let work = model.events.filter(\.isDeadline)
+        let todo = work.filter { $0.date >= today && !model.isDone($0) }.sorted { $0.sortKey < $1.sortKey }
+        let late = work.filter { $0.date < today && !model.isDone($0) && daysBetween($0.date, today) <= 30 }
+        let fresh = work.filter { $0.date >= today && ($0.createdAt ?? "") >= weekAgo }.count
+        let dates = Array(Set(todo.map(\.date))).sorted()
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("Cahier de texte").font(.largeTitle.bold())
+                Text(todo.isEmpty ? "Tout est fait 🎉" : "\(todo.count) \(todo.count > 1 ? "travaux" : "travail") à faire" + (fresh > 0 ? " · \(fresh) nouveau\(fresh > 1 ? "x" : "") cette semaine" : "")).foregroundStyle(.secondary)
+                if !late.isEmpty { group("En retard", late, today: today, weekAgo: weekAgo) }
+                ForEach(dates, id: \.self) { d in
+                    let n = daysBetween(today, d)
+                    group(n == 0 ? "Pour aujourd'hui" : n == 1 ? "Pour demain" : "Pour \(longDate(d))", todo.filter { $0.date == d }, today: today, weekAgo: weekAgo)
+                }
+            }
+            .padding(28)
+            .frame(maxWidth: 760, alignment: .leading)
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    func group(_ title: String, _ list: [AgendaEvent], today: String, weekAgo: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title.uppercased()).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            ForEach(list) { e in
+                EventRow(event: e, showDate: e.date < today)
+                    .overlay(alignment: .topTrailing) {
+                        if (e.createdAt ?? "") >= weekAgo { Text("Nouveau").font(.caption2.bold()).foregroundStyle(.blue).padding(.top, 6).padding(.trailing, 46) }
+                    }
+            }
+        }
     }
 }
 
@@ -488,9 +625,9 @@ struct EventEditor: View {
     @State private var hasTime: Bool
     @State private var time: Date
 
-    init(event: AgendaEvent?, date: String) {
+    init(event: AgendaEvent?, date: String, kind: String = "eval") {
         isNew = event == nil
-        let e = event ?? AgendaEvent(id: "", kind: "eval", title: "", subject: "", date: date, time: "", color: "blue", notes: "", chapters: [])
+        let e = event ?? AgendaEvent(id: "", kind: kind, title: "", subject: "", date: date, time: "", color: "blue", notes: "", chapters: [])
         _ev = State(initialValue: e)
         _hasTime = State(initialValue: !(e.time ?? "").isEmpty)
         let p = (e.time ?? "").split(separator: ":").compactMap { Int($0) }

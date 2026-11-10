@@ -35,8 +35,6 @@ struct CoursView: View {
                         .padding(24)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .toolbar { Button { newChapter = true } label: { Label("Nouveau chapitre", systemImage: "plus") } }
-                    .sheet(isPresented: $newChapter) { ChapterEditor(chapter: nil, subject: subject) }
                 } else {
                     ContentUnavailableView("Choisis une matière", systemImage: "books.vertical", description: Text("Fiches de cours, sujets, corrigés et TOP EXO."))
                 }
@@ -55,16 +53,8 @@ struct ChapterCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(chapter.title).font(.headline)
-                Spacer()
-                Menu {
-                    Button("Renommer") { editing = true }
-                    Button("Supprimer le chapitre", role: .destructive) { confirm = true }
-                } label: { Image(systemName: "ellipsis.circle") }
-                .menuStyle(.borderlessButton).fixedSize()
-            }
-            ChapterFiles(chapter: chapter, editable: true)
+            Text(chapter.title).font(.headline)
+            ChapterFiles(chapter: chapter, showTitle: false)
         }
         .padding(14)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
@@ -79,6 +69,7 @@ struct ChapterFiles: View {
     @EnvironmentObject var model: AppModel
     let chapter: Chapter
     var editable = false
+    var showTitle = true
     @State private var importing: String?
     @State private var busy: String?
     @State private var targeted: String?
@@ -86,7 +77,7 @@ struct ChapterFiles: View {
     var body: some View {
         let current = model.chapter(chapter.id) ?? chapter
         VStack(alignment: .leading, spacing: 6) {
-            if !editable { Text(current.title).font(.subheadline.weight(.semibold)) }
+            if showTitle { Text(current.title).font(.subheadline.weight(.semibold)) }
             ForEach(SLOTS, id: \.id) { slot in
                 let f = current.file(slot.id)
                 if f != nil || editable {
