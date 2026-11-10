@@ -1558,7 +1558,8 @@ function openEdit(ev, date, draft) {
       <div id="dateInfo"></div>
       <div>
         <div class="label">Sujet ou consignes en photo / PDF <span style="color:var(--text2);text-transform:none">(facultatif)</span></div>
-        <label class="group upload" style="cursor:pointer">${ICON.plus}<span id="attachLabel">Joindre une photo ou un PDF</span><input type="file" id="attachInput" accept="application/pdf,image/png,image/jpeg,image/heic,image/webp" multiple hidden></label>
+        <label class="group upload" style="cursor:pointer">📷<span>Prendre le sujet en photo</span><input type="file" id="cameraInput" accept="image/*" capture="environment" hidden></label>
+        <label class="group upload" style="cursor:pointer;margin-top:8px">${ICON.plus}<span id="attachLabel">Joindre une photo ou un PDF</span><input type="file" id="attachInput" accept="application/pdf,image/png,image/jpeg,image/heic,image/webp" multiple hidden></label>
       </div>
       <div>
         <div class="label">Chapitres concernés</div>
@@ -1606,6 +1607,10 @@ function openEdit(ev, date, draft) {
     bd.querySelectorAll(".swatch").forEach((x) => x.classList.toggle("on", x.dataset.color === c.color));
   };
   let pending = [];
+  bd.querySelector("#cameraInput").onchange = (ev) => {
+    pending = [...pending, ...ev.target.files];
+    bd.querySelector("#attachLabel").textContent = `${pending.length} photo${pending.length > 1 ? "s" : ""} prête${pending.length > 1 ? "s" : ""} · reprendre une photo pour ajouter une page`;
+  };
   bd.querySelector("#attachInput").onchange = (ev) => {
     pending = [...ev.target.files];
     bd.querySelector("#attachLabel").textContent = pending.length ? `${pending.length} fichier${pending.length > 1 ? "s" : ""} prêt${pending.length > 1 ? "s" : ""} à envoyer` : "Joindre une photo ou un PDF";
@@ -1697,7 +1702,7 @@ function openDetail(id) {
       ${classFor(e.date, e.subject) ? `<div class="class-slot" style="--c:${col(e.color)}">Pendant le cours de <b>${esc(classFor(e.date, e.subject).title)}</b> · ${esc(classFor(e.date, e.subject).time)}–${esc(classFor(e.date, e.subject).end)}</div>` : ""}
       <div>
         <div class="label">Sujet et fichiers (${(e.attachments || []).length})</div>
-        <div class="group">${attachmentRows(e)}<label class="upload" style="cursor:pointer">${ICON.plus}<span>Ajouter une photo ou un PDF</span><input type="file" data-act="attach" accept="application/pdf,image/png,image/jpeg,image/heic,image/webp" multiple hidden></label></div>
+        <div class="group">${attachmentRows(e)}<label class="upload" style="cursor:pointer">📷<span>Prendre le sujet en photo</span><input type="file" data-act="attach" accept="image/*" capture="environment" hidden></label><label class="upload" style="cursor:pointer">${ICON.plus}<span>Ajouter une photo ou un PDF</span><input type="file" data-act="attach" accept="application/pdf,image/png,image/jpeg,image/heic,image/webp" multiple hidden></label></div>
       </div>
       <div>
         <div class="label">Chapitres (${linked.length})</div>
@@ -1715,12 +1720,12 @@ function openDetail(id) {
     </div>`);
 
   bd.querySelector("[data-act=close]").onclick = closeSheet;
-  bd.querySelector("[data-act=attach]").onchange = async (x) => {
+  bd.querySelectorAll("[data-act=attach]").forEach((inp) => inp.onchange = async (x) => {
     const files = [...x.target.files];
     if (!files.length) return;
     try { await attachFiles(e.id, files, (m) => toast(m)); toast("Fichier ajouté"); openDetail(e.id); render(); }
     catch (err) { toast(err.message); }
-  };
+  });
   bd.querySelector("[data-act=edit]").onclick = () => openEdit(e);
   bd.querySelector("[data-act=done]").onclick = async () => { await toggleDone(e.id); openDetail(e.id); };
   bd.querySelectorAll("[data-chapter]").forEach((b) => b.onclick = () => openChapter(b.dataset.chapter, () => openDetail(e.id), "Retour"));
@@ -2128,6 +2133,22 @@ function pushSupport() {
   if (Notification.permission === "denied") return { ok: false, why: "denied" };
   return { ok: true };
 }
+
+/* Mises à jour sur iPhone (appli ajoutée à l'écran d'accueil) : l'appli reste ouverte en mémoire,
+   donc on vérifie au retour au premier plan si une nouvelle version du site est en ligne, et on recharge. */
+let siteVersion = null;
+async function currentVersion() {
+  try { const r = await fetch("/", { method: "HEAD", cache: "no-store" }); return r.headers.get("etag") || r.headers.get("last-modified"); } catch { return null; }
+}
+async function checkForUpdate() {
+  const v = await currentVersion();
+  if (!v) return;
+  if (siteVersion === null) { siteVersion = v; return; }
+  if (v !== siteVersion && !document.querySelector("#sheetRoot .backdrop")) location.reload();
+}
+checkForUpdate();
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkForUpdate(); });
+setInterval(checkForUpdate, 30 * 60 * 1000);
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator) || /Electron/.test(navigator.userAgent)) return;

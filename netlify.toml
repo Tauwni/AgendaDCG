@@ -17,3 +17,17 @@
 [dev]
   publish = "public"
   port = 8888
+
+# L'appli iPhone (écran d'accueil) doit toujours récupérer la dernière version
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-cache"
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"
+[[headers]]
+  for = "/schedule.json"
+  [headers.values]
+    Cache-Control = "no-cache"
