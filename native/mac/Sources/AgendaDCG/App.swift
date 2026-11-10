@@ -12,6 +12,7 @@ struct AgendaDCGApp: App {
                 .environmentObject(model)
                 .environmentObject(updater)
                 .frame(minWidth: 820, minHeight: 560)
+                .tint(.red)
                 .task { await model.start() }
                 .task { await updater.loop() }
         }

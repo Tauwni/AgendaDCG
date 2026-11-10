@@ -69,18 +69,25 @@ jobs:
       - name: Build
         working-directory: native/windows/AgendaDCG
         run: dotnet publish -c Release -r win-x64 --self-contained true -p:Version=$env:VERSION -p:PublishReadyToRun=true -o ../publish
-      - name: Test de lancement (capture d'écran)
+      - name: Test de lancement (captures d'écran)
         working-directory: native/windows
         run: |
-          $p = Start-Process -FilePath publish/AgendaDCG.exe -PassThru
-          Start-Sleep -Seconds 15
-          if ($p.HasExited) { throw "L'app s'est fermée au lancement (code $($p.ExitCode))" }
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
-          [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
-          $bmp.Save("$PWD/capture-windows.png")
-          Stop-Process -Id $p.Id
+          New-Item -ItemType Directory -Force captures | Out-Null
+          function Shot($name, $demo, $tab) {
+            $env:AGENDA_DEMO = $demo; $env:AGENDA_TAB = $tab
+            $p = Start-Process -FilePath publish/AgendaDCG.exe -PassThru
+            Start-Sleep -Seconds 12
+            if ($p.HasExited) { throw "L'app s'est fermée au lancement ($name, code $($p.ExitCode))" }
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save("$PWD/captures/$name.png")
+            Stop-Process -Id $p.Id; Start-Sleep -Seconds 2
+          }
+          Shot "1-connexion" "" ""
+          foreach ($t in "today", "agenda", "cours", "notes", "settings") { Shot "2-$t" "1" $t }
+          $env:AGENDA_DEMO = ""
       - name: Paquet Velopack (installeur + mises à jour)
         working-directory: native/windows
         run: |
@@ -101,4 +108,4 @@ jobs:
           name: agenda-dcg-windows
           path: |
             native/windows/Releases/Agenda-DCG-Windows-Setup.exe
-            native/windows/capture-windows.png
+            native/windows/captures/*.png

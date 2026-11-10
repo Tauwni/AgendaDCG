@@ -91,7 +91,7 @@ public static class Dialogs
         }
         subject.SelectionChanged += (_, _) => { chapters.Clear(); DrawChapters(); };
         DrawChapters();
-        var notes = new TextBox { Text = ev.Notes ?? "", AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Height = 80, FontSize = 14, Padding = new Thickness(6), Background = Theme.Card, Foreground = Theme.Text, BorderBrush = Theme.Line, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        var notes = new TextBox { Text = ev.Notes ?? "", AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Height = 90, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         var err = T("", 13, null, Theme.Accent);
 
         var save = Btn(isNew ? "Ajouter" : "Enregistrer", async () =>

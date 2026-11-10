@@ -22,8 +22,9 @@ public static class Ui
 
     public static Border Card(UIElement child, double pad = 14) => new()
     {
-        Child = child, Background = Theme.Card, CornerRadius = new CornerRadius(10), Padding = new Thickness(pad),
-        BorderBrush = Theme.Line, BorderThickness = new Thickness(1),
+        Child = child, Background = Theme.Card, CornerRadius = new CornerRadius(14), Padding = new Thickness(pad),
+        BorderBrush = Theme.Line, BorderThickness = new Thickness(Theme.Dark ? 1 : 0),
+        Effect = Theme.Dark ? null : new System.Windows.Media.Effects.DropShadowEffect { BlurRadius = 18, ShadowDepth = 2, Opacity = 0.08, Direction = 270 },
     };
 
     public static StackPanel V(double gap, params UIElement[] items)
@@ -48,7 +49,7 @@ public static class Ui
         var border = new FrameworkElementFactory(typeof(Border));
         border.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding("Background") { RelativeSource = System.Windows.Data.RelativeSource.TemplatedParent });
         border.SetBinding(Border.PaddingProperty, new System.Windows.Data.Binding("Padding") { RelativeSource = System.Windows.Data.RelativeSource.TemplatedParent });
-        border.SetValue(Border.CornerRadiusProperty, new CornerRadius(7));
+        border.SetValue(Border.CornerRadiusProperty, new CornerRadius(9));
         var cp = new FrameworkElementFactory(typeof(ContentPresenter));
         cp.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
         cp.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
@@ -71,7 +72,7 @@ public static class Ui
         var b = new Button
         {
             Content = content is string s ? T(s, 13, FontWeights.SemiBold, primary ? Brushes.White : danger ? Theme.Accent : Theme.Text) : content,
-            Background = primary ? Theme.Blue : Theme.Line, Padding = new Thickness(14, 7, 14, 7), Style = ButtonStyle(),
+            Background = primary ? Theme.Accent : Theme.Soft, Padding = new Thickness(16, 8, 16, 8), Style = ButtonStyle(),
         };
         b.Click += (_, _) => onClick();
         return b;
@@ -95,13 +96,12 @@ public static class Ui
 
     public static TextBox Input(string text = "", string? placeholder = null) => new()
     {
-        Text = text, FontSize = 14, Padding = new Thickness(6, 5, 6, 5), Background = Theme.Card, Foreground = Theme.Text,
-        BorderBrush = Theme.Line, CaretBrush = Theme.Text, ToolTip = placeholder,
+        Text = text, FontSize = 14, ToolTip = placeholder,
     };
 
     public static ComboBox Combo(IEnumerable<(string Value, string Label)> items, string? selected)
     {
-        var c = new ComboBox { FontSize = 14, Padding = new Thickness(6, 4, 6, 4) };
+        var c = new ComboBox { FontSize = 14, Padding = new Thickness(8, 6, 8, 6) };
         foreach (var (v, l) in items) c.Items.Add(new ComboBoxItem { Content = l, Tag = v, IsSelected = v == selected });
         if (c.SelectedIndex < 0 && c.Items.Count > 0) c.SelectedIndex = 0;
         return c;
@@ -138,6 +138,7 @@ public static class Ui
             Width = width, SizeToContent = SizeToContent.Height, MaxHeight = 820, Background = Theme.Bg, Owner = MainWindow.Current,
             WindowStartupLocation = WindowStartupLocation.CenterOwner, ResizeMode = ResizeMode.NoResize, ShowInTaskbar = false, FontFamily = Theme.Font,
         };
+        Theme.Chrome(w);
         w.KeyDown += (_, e) => { if (e.Key == Key.Escape) w.Close(); };
         return w;
     }

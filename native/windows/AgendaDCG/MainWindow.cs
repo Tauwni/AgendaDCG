@@ -20,7 +20,7 @@ public class MainWindow : Window
     readonly Border content = new();
     readonly StackPanel nav = new();
     readonly StackPanel footer = new() { Margin = new Thickness(12) };
-    readonly Border toast = new() { CornerRadius = new CornerRadius(18), Padding = new Thickness(16, 9, 16, 9), Background = Theme.Card, BorderBrush = Theme.Line, BorderThickness = new Thickness(1), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 0, 24), Visibility = Visibility.Collapsed, IsHitTestVisible = false };
+    readonly Border toast = new() { CornerRadius = new CornerRadius(20), Padding = new Thickness(18, 10, 18, 10), Background = new SolidColorBrush(Color.FromArgb(235, 30, 30, 32)), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 0, 24), Visibility = Visibility.Collapsed, IsHitTestVisible = false };
     string tab = "today";
     Store S => Store.I;
 
@@ -39,6 +39,7 @@ public class MainWindow : Window
         Background = Theme.Bg;
         FontFamily = Theme.Font;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        Theme.Chrome(this);
         try { Icon = new BitmapImage(new Uri("pack://application:,,,/icon.png")); } catch { }
         root.Children.Add(content);
         root.Children.Add(toast);
@@ -59,7 +60,7 @@ public class MainWindow : Window
 
     public void ShowToast(string msg)
     {
-        toast.Child = T(msg, 13, FontWeights.SemiBold);
+        toast.Child = T(msg, 13, FontWeights.SemiBold, Brushes.White);
         toast.Visibility = Visibility.Visible;
         toast.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200)));
         var t = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
@@ -69,6 +70,7 @@ public class MainWindow : Window
 
     async Task Start()
     {
+        if (Environment.GetEnvironmentVariable("AGENDA_DEMO") == "1") { Demo.Load(); tab = Environment.GetEnvironmentVariable("AGENDA_TAB") ?? "today"; ShowShell(); return; }
         try
         {
             S.Profile = await Api.Get<Profile>("profile");
@@ -89,12 +91,12 @@ public class MainWindow : Window
     void ShowLogin()
     {
         var name = Input(Properties.Name);
-        var pass = new PasswordBox { FontSize = 14, Padding = new Thickness(6, 5, 6, 5) };
-        var pin = new PasswordBox { FontSize = 14, Padding = new Thickness(6, 5, 6, 5), MaxLength = 6 };
+        var pass = new PasswordBox();
+        var pin = new PasswordBox { MaxLength = 6 };
         var err = T("", 13, null, Theme.Accent);
         var hint = T("Connecte-toi avec ton prénom.", 14, null, Theme.Text2);
-        var passRow = Field("Mot de passe de la classe", pass);
-        var pinRow = Field("Code perso (6 chiffres)", pin);
+        var passRow = Stacked("Mot de passe de la classe", pass);
+        var pinRow = Stacked("Code perso (6 chiffres)", pin);
         pinRow.Visibility = Visibility.Collapsed;
         var step = 0; var exists = true;
         Button? go = null;
@@ -125,17 +127,21 @@ public class MainWindow : Window
         }
         go = Btn("Continuer", Next, primary: true);
         go.IsDefault = true;
-        go.HorizontalAlignment = HorizontalAlignment.Center;
+        go.HorizontalAlignment = HorizontalAlignment.Stretch;
+        go.Padding = new Thickness(16, 11, 16, 11);
         var logo = new Image { Source = new BitmapImage(new Uri("pack://application:,,,/icon.png")), Width = 96, Height = 96 };
         var title = T("Agenda DCG", 30, FontWeights.Bold); title.HorizontalAlignment = HorizontalAlignment.Center;
         hint.HorizontalAlignment = HorizontalAlignment.Center;
-        var form = V(12, logo, title, hint, Field("Prénom", name), passRow, pinRow, err, go);
+        var form = V(12, logo, title, hint, Stacked("Prénom", name), passRow, pinRow, err, go);
         if (S.Offline) form.Children.Add(T("Pas de connexion internet", 13, null, Theme.Text2));
-        form.Width = 400; form.HorizontalAlignment = HorizontalAlignment.Center; form.VerticalAlignment = VerticalAlignment.Center;
-        content.Child = form;
+        var card = Card(form, 34);
+        card.Width = 460; card.HorizontalAlignment = HorizontalAlignment.Center; card.VerticalAlignment = VerticalAlignment.Center;
+        content.Child = card;
         _ = CheckClassSession(passRow);
         name.Focus();
     }
+
+    static FrameworkElement Stacked(string label, UIElement input) => V(5, T(label, 12, FontWeights.SemiBold, Theme.Text2), input);
 
     static async Task CheckClassSession(FrameworkElement passRow)
     {
@@ -151,7 +157,11 @@ public class MainWindow : Window
         var side = new DockPanel { Background = Theme.Side };
         DockPanel.SetDock(footer, Dock.Bottom);
         side.Children.Add(footer);
-        nav.Margin = new Thickness(10, 16, 10, 0);
+        nav.Margin = new Thickness(12, 18, 12, 0);
+        var brand = H(10, new Image { Source = new BitmapImage(new Uri("pack://application:,,,/icon.png")), Width = 30, Height = 30 }, T("Agenda DCG", 16, FontWeights.Bold));
+        brand.Margin = new Thickness(20, 20, 12, 0);
+        DockPanel.SetDock(brand, Dock.Top);
+        side.Children.Add(brand);
         side.Children.Add(nav);
         g.Children.Add(side);
         var page = new Border();
@@ -170,8 +180,8 @@ public class MainWindow : Window
         nav.Children.Clear();
         foreach (var (id, label, glyph) in new[] { ("today", "Aujourd'hui", ""), ("agenda", "Agenda", ""), ("cours", "Cours", ""), ("notes", "Notes", ""), ("settings", "Réglages", "") })
         {
-            var row = H(10, Icon(glyph, 15, id == tab ? Theme.Accent : Theme.Text), T(label, 14, id == tab ? FontWeights.SemiBold : FontWeights.Normal));
-            var item = new Border { Child = row, Padding = new Thickness(10, 8, 10, 8), CornerRadius = new CornerRadius(7), Background = id == tab ? Theme.Selected : Brushes.Transparent, Cursor = Cursors.Hand, Margin = new Thickness(0, 0, 0, 2) };
+            var row = H(12, Icon(glyph, 16, id == tab ? Theme.Accent : Theme.Text2), T(label, 14, id == tab ? FontWeights.SemiBold : FontWeights.Normal, id == tab ? Theme.Accent : Theme.Text));
+            var item = new Border { Child = row, Padding = new Thickness(10, 8, 10, 8), CornerRadius = new CornerRadius(7), Background = id == tab ? Theme.AccentSoft : Brushes.Transparent, Cursor = Cursors.Hand, Margin = new Thickness(0, 0, 0, 3) };
             item.MouseLeftButtonUp += (_, _) => { tab = id; Render(); };
             nav.Children.Add(item);
         }
@@ -361,7 +371,7 @@ public class MainWindow : Window
                 cell.Children.Add(new Border { Child = t, Background = Theme.Of(e.Color, (byte)(S.IsDone(e) ? 25 : 60)), CornerRadius = new CornerRadius(4), Padding = new Thickness(4, 1, 4, 1), Margin = new Thickness(0, 2, 0, 0) });
             }
             if (evs.Count > 3) cell.Children.Add(T($"+{evs.Count - 3}", 11, null, Theme.Text2));
-            var b = new Border { Child = cell, Padding = new Thickness(4), Margin = new Thickness(1), CornerRadius = new CornerRadius(8), BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 1, 0, 0), Background = day == selected ? Theme.Selected : Brushes.Transparent, Cursor = Cursors.Hand, ClipToBounds = true };
+            var b = new Border { Child = cell, Padding = new Thickness(4), Margin = new Thickness(1), CornerRadius = new CornerRadius(8), BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 1, 0, 0), Background = day == selected ? Theme.AccentSoft : Brushes.Transparent, Cursor = Cursors.Hand, ClipToBounds = true };
             var d = day;
             b.MouseLeftButtonUp += (_, e) => { if (e.ClickCount == 1) { selected = d; Render(); } };
             b.MouseLeftButtonDown += (_, e) => { if (e.ClickCount == 2) Dialogs.EventEditor(null, d); };
