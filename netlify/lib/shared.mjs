@@ -27,7 +27,7 @@ export const pushReady = () => !!(Netlify.env.get("PUSH_PUBLIC_KEY") && Netlify.
 
 export async function sendPush(profile, payload) {
   if (!pushReady() || !profile.subs?.length) return 0;
-  webpush.setVapidDetails("https://agenda-evals-0885.netlify.app", Netlify.env.get("PUSH_PUBLIC_KEY"), Netlify.env.get("PUSH_PRIVATE_KEY"));
+  webpush.setVapidDetails("https://agendadcg.netlify.app", Netlify.env.get("PUSH_PUBLIC_KEY"), Netlify.env.get("PUSH_PRIVATE_KEY"));
   const dead = new Set();
   let sent = 0;
   for (const sub of profile.subs) {

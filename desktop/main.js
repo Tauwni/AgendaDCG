@@ -1,7 +1,7 @@
 const { app, BrowserWindow, shell, nativeTheme } = require("electron");
 const path = require("node:path");
 
-const SITE = "https://agenda-evals-0885.netlify.app";
+const SITE = "https://agendadcg.netlify.app";
 const isSite = (url) => url === SITE || url.startsWith(SITE + "/");
 
 let mainWindow;

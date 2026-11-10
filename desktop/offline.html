@@ -21,8 +21,8 @@ button { font: inherit; font-weight: 600; background: var(--accent); color: #fff
     <button id="retry">Réessayer</button>
   </div>
 <script>
-const target = new URLSearchParams(location.search).get("retry") || "https://agenda-evals-0885.netlify.app";
-document.getElementById("retry").onclick = () => { location.href = target.startsWith("https://agenda-evals-0885.netlify.app") ? target : "https://agenda-evals-0885.netlify.app"; };
+const target = new URLSearchParams(location.search).get("retry") || "https://agendadcg.netlify.app";
+document.getElementById("retry").onclick = () => { location.href = target.startsWith("https://agendadcg.netlify.app") ? target : "https://agendadcg.netlify.app"; };
 setInterval(() => { if (navigator.onLine) document.getElementById("retry").click(); }, 5000);
 </script>
 </body>

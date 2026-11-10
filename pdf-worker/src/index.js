@@ -1,6 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 
-const ORIGINS = ["https://agenda-evals-0885.netlify.app", "http://localhost:8888"];
+const ORIGINS = ["https://agendadcg.netlify.app", "http://localhost:8888"];
 const MAX_PDF = 100 * 1024 * 1024;
 
 // Stay under R2's free tier (10 GB, 1M class A ops, 10M class B ops per month) so nothing is ever billed.

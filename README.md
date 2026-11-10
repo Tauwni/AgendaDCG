@@ -7,7 +7,7 @@
 [![Version](https://img.shields.io/github/v/release/Tauwni/AgendaDCG?style=flat-square&label=version&color=ff3b30)](https://github.com/Tauwni/AgendaDCG/releases/latest)
 [![Téléchargements](https://img.shields.io/github/downloads/Tauwni/AgendaDCG/total?style=flat-square&label=t%C3%A9l%C3%A9chargements&color=1d1d1f)](https://github.com/Tauwni/AgendaDCG/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/Tauwni/AgendaDCG/desktop.yml?style=flat-square&label=build)](https://github.com/Tauwni/AgendaDCG/actions/workflows/desktop.yml)
-[![Site](https://img.shields.io/badge/site-en_ligne-34c759?style=flat-square&logo=netlify&logoColor=white)](https://agenda-evals-0885.netlify.app)
+[![Site](https://img.shields.io/badge/site-en_ligne-34c759?style=flat-square&logo=netlify&logoColor=white)](https://agendadcg.netlify.app)
 [![Licence MIT](https://img.shields.io/github/license/Tauwni/AgendaDCG?style=flat-square&color=8e8e93)](LICENSE)
 
 **L'agenda partagé des évaluations de la classe, avec les cours en PDF pour chaque éval.**<br>
@@ -19,7 +19,7 @@ Un style Calendrier d'Apple, disponible sur iPhone, Mac, Windows et dans le navi
 &nbsp;
 <a href="https://github.com/Tauwni/AgendaDCG/releases/latest/download/Agenda-DCG-Windows-Setup.exe"><img src="https://img.shields.io/badge/T%C3%A9l%C3%A9charger_pour_Windows-0078D4?style=for-the-badge&logo=windows11&logoColor=white" alt="Télécharger pour Windows" height="44"></a>
 &nbsp;
-<a href="https://agenda-evals-0885.netlify.app"><img src="https://img.shields.io/badge/Ouvrir_sur_iPhone_%2F_web-ff3b30?style=for-the-badge&logo=safari&logoColor=white" alt="Ouvrir sur iPhone ou dans le navigateur" height="44"></a>
+<a href="https://agendadcg.netlify.app"><img src="https://img.shields.io/badge/Ouvrir_sur_iPhone_%2F_web-ff3b30?style=for-the-badge&logo=safari&logoColor=white" alt="Ouvrir sur iPhone ou dans le navigateur" height="44"></a>
 
 <sub>Mac Intel et Apple Silicon · Windows 10 et 11 (x64 et ARM) · iPhone avec Safari</sub>
 
@@ -125,7 +125,7 @@ Chacun choisit : à chaque nouvelle évaluation, chaque matin, chaque dimanche, 
 
 ## Installation
 
-**Page de présentation et téléchargements : [agenda-evals-0885.netlify.app/presentation](https://agenda-evals-0885.netlify.app/presentation)**
+**Page de présentation et téléchargements : [agendadcg.netlify.app/presentation](https://agendadcg.netlify.app/presentation)**
 
 ### Avec un agent IA
 
@@ -147,8 +147,8 @@ Dis-moi quand c'est fait.
 | --- | --- |
 | **Mac** | Télécharge [`Agenda-DCG-Mac.dmg`](https://github.com/Tauwni/AgendaDCG/releases/latest/download/Agenda-DCG-Mac.dmg), ouvre-le et glisse l'app dans **Applications**. |
 | **Windows** | Télécharge [`Agenda-DCG-Windows-Setup.exe`](https://github.com/Tauwni/AgendaDCG/releases/latest/download/Agenda-DCG-Windows-Setup.exe) et lance-le. Un raccourci est créé sur le bureau. |
-| **iPhone** | Ouvre [le site](https://agenda-evals-0885.netlify.app) dans Safari, puis **Partager → Sur l'écran d'accueil**. |
-| **Navigateur** | Va sur **[agenda-evals-0885.netlify.app](https://agenda-evals-0885.netlify.app)**. |
+| **iPhone** | Ouvre [le site](https://agendadcg.netlify.app) dans Safari, puis **Partager → Sur l'écran d'accueil**. |
+| **Navigateur** | Va sur **[agendadcg.netlify.app](https://agendadcg.netlify.app)**. |
 
 Au premier lancement, l'agenda demande ton prénom et le mot de passe de la classe, puis te fait créer un code perso à 6 chiffres. Sur un autre appareil, ton prénom et ton code suffisent pour retrouver ton compte. Le mot de passe de la classe se demande au délégué : il n'est écrit nulle part dans ce dépôt.
 
