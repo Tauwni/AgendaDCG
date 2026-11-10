@@ -39,7 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 enum Tab: String, CaseIterable, Identifiable {
-    case today, agenda, cours, notes, reviser, settings
+    case today, agenda, cours, reviser, settings
     var id: String { rawValue }
     var label: String { ["today": "Aujourd'hui", "agenda": "Agenda", "cours": "Cours", "notes": "Notes", "reviser": "Réviser", "settings": "Réglages"][rawValue]! }
     var icon: String { ["today": "house", "agenda": "calendar", "cours": "books.vertical", "notes": "chart.bar.xaxis", "reviser": "scope", "settings": "gearshape"][rawValue]! }
@@ -68,7 +68,6 @@ struct RootView: View {
                         case .today: TodayView()
                         case .agenda: AgendaView()
                         case .cours: CoursView()
-                        case .notes: NotesView()
                         case .reviser: ReviserView()
                         case .settings: SettingsView()
                         }

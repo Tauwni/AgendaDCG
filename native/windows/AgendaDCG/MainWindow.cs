@@ -179,7 +179,7 @@ public class MainWindow : Window
     {
         if (pageHost == null || S.Profile == null) return;
         nav.Children.Clear();
-        foreach (var (id, label, glyph) in new[] { ("today", "Aujourd'hui", ""), ("agenda", "Agenda", ""), ("cours", "Cours", ""), ("notes", "Notes", ""), ("reviser", "Réviser", ""), ("settings", "Réglages", "") })
+        foreach (var (id, label, glyph) in new[] { ("today", "Aujourd'hui", ""), ("agenda", "Agenda", ""), ("cours", "Cours", ""), ("reviser", "Réviser", ""), ("settings", "Réglages", "") })
         {
             var row = H(12, Icon(glyph, 16, id == tab ? Theme.Accent : Theme.Text2), T(label, 14, id == tab ? FontWeights.SemiBold : FontWeights.Normal, id == tab ? Theme.Accent : Theme.Text));
             var item = new Border { Child = row, Padding = new Thickness(10, 8, 10, 8), CornerRadius = new CornerRadius(7), Background = id == tab ? Theme.AccentSoft : Brushes.Transparent, Cursor = Cursors.Hand, Margin = new Thickness(0, 0, 0, 3) };
@@ -191,7 +191,6 @@ public class MainWindow : Window
         {
             "agenda" => AgendaPage(),
             "cours" => CoursPage(),
-            "notes" => NotesPage(),
             "reviser" => ReviserPage(),
             "settings" => SettingsPage(),
             _ => TodayPage(),

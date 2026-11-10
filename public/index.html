@@ -466,7 +466,7 @@ a.nav-row { color: inherit; text-decoration: none; }
   <form class="login-card" id="loginForm" novalidate>
     <div class="app-icon"><div class="top" id="iconDay"></div><div class="num" id="iconNum"></div></div>
     <h1>Agenda DCG</h1>
-    <p>Les évaluations de la classe, les cours et tes notes</p>
+    <p>Les évaluations de la classe et les cours</p>
     <div class="group">
       <input id="loginName" placeholder="Ton prénom" autocomplete="given-name" maxlength="40">
       <input id="loginPass" type="password" placeholder="Mot de passe de la classe" autocomplete="current-password" class="hidden">
@@ -531,7 +531,6 @@ a.nav-row { color: inherit; text-decoration: none; }
   <button data-tab="today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5L12 4l8 7.5"/><path d="M6 10v9.5h12V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Aujourd'hui</span></button>
   <button data-tab="agenda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span>Agenda</span></button>
   <button data-tab="cours"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 015.5 4H10a2 2 0 012 2v14a1.5 1.5 0 00-1.5-1.5h-5A1.5 1.5 0 014 17z"/><path d="M20 5.5A1.5 1.5 0 0018.5 4H14a2 2 0 00-2 2v14a1.5 1.5 0 011.5-1.5h5a1.5 1.5 0 001.5-1.5z"/></svg><span>Cours</span></button>
-  <button data-tab="notes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Notes</span></button>
   <button data-tab="reviser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg><span>Réviser</span></button>
   <button data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg><span>Réglages</span></button>
 </nav>
@@ -852,7 +851,7 @@ $("#loginForm").addEventListener("submit", async (e) => {
       $("#loginPin2").classList.toggle("hidden", exists);
       $("#pinHint").innerHTML = exists
         ? `Content de te revoir, <b>${esc(name)}</b>. Entre ton code perso.`
-        : `Première connexion : crée ton <b>code perso à 6 chiffres</b>. Il te servira à retrouver tes notes sur tous tes appareils.`;
+        : `Première connexion : crée ton <b>code perso à 6 chiffres</b>. Il te servira à te connecter sur tous tes appareils.`;
       $("#loginBtn").textContent = exists ? "Entrer" : "Créer mon compte";
       $("#loginBack").classList.remove("hidden");
       $("#loginPin").value = ""; $("#loginPin2").value = "";
@@ -1034,7 +1033,6 @@ function renderToday() {
     <div class="section">
       <div class="stats-line">
         <button class="stat" data-go="agenda"><b>${weekItems.length ? `${weekDone}/${weekItems.length}` : "—"}</b><span>${weekItems.length ? "faits cette semaine" : "rien à rendre cette semaine"}</span></button>
-        <button class="stat" data-go="notes"><b>${avg === null ? "—" : fr(avg, 2)}</b><span>${avg === null ? "ajoute tes notes" : "moyenne indicative"}</span></button>
       </div>
     </div>
 
