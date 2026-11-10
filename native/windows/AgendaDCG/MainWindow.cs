@@ -447,6 +447,8 @@ public class MainWindow : Window
                 if (S.IsDone(e)) tt.TextDecorations = TextDecorations.Strikethrough;
                 inner.Children.Add(tt);
                 inner.Children.Add(T((e.TimeLabel ?? "") + (e.IsClass ? "" : " · " + Data.KindLabel(e.Kind)), 11, null, Theme.Text2));
+                if (e.Revision && !S.HasLevels) inner.Children.Add(T("✨ Clique pour personnaliser", 11, FontWeights.SemiBold));
+                foreach (var p in S.RevisionFor(e)) { var pt = T("📖 " + p.Label, 11, FontWeights.SemiBold); pt.TextTrimming = TextTrimming.CharacterEllipsis; inner.Children.Add(new Border { Child = pt, Background = Theme.Card, CornerRadius = new CornerRadius(4), Padding = new Thickness(4, 2, 4, 2), Margin = new Thickness(0, 3, 0, 0) }); }
                 if (e.IsClass)
                     foreach (var task in insideAll.Where(x => Store.SameSubject(x.Subject, e.Subject)))
                     {
@@ -675,6 +677,9 @@ public class MainWindow : Window
             var h = T($"{e.Title} · {Data.LongDate(e.Date)}", 13, FontWeights.SemiBold); h.Margin = new Thickness(0, 6, 0, 2); past.Children.Add(h);
             foreach (var f in e.Attachments!) { var ff = f; var b = Btn("📄 " + f.Name, async () => await Try(async () => { var p = await S.Download(ff); Process.Start(new ProcessStartInfo(p) { UseShellExecute = true }); })); b.HorizontalAlignment = HorizontalAlignment.Left; b.Margin = new Thickness(0, 2, 0, 2); past.Children.Add(b); }
         }
+        var lv = Btn(S.HasLevels ? "Modifier mon niveau par matière" : "Personnaliser mes révisions (1 min)", () => { Dialogs.LevelsSurvey(); Render(); }, primary: !S.HasLevels);
+        lv.HorizontalAlignment = HorizontalAlignment.Left;
+        body.Children.Add(Section("Révisions", lv));
         body.Children.Add(Section("Devoirs passés", past));
         body.Children.Add(Section("Application", app));
         return Page("Réglages", Scroll(body));

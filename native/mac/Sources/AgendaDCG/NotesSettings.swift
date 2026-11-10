@@ -190,6 +190,7 @@ struct SettingsView: View {
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var updater: Updater
     @State private var usage: [String: Double]?
+    @State private var levels = false
 
     var body: some View {
         let prefs = model.profile?.prefs ?? Prefs()
@@ -208,6 +209,9 @@ struct SettingsView: View {
                     }
                 }
             } header: { Text("Notifications") } footer: { Text("Les rappels s'affichent sur ce Mac, même quand l'agenda est fermé.") }
+            Section("Révisions") {
+                Button(model.hasLevels ? "Modifier mon niveau par matière" : "Personnaliser mes révisions (1 min)") { levels = true }
+            }
             Section("Devoirs passés") {
                 if model.pastHomework.isEmpty { Text("Les sujets joints aux devoirs apparaîtront ici une fois la date passée.").foregroundStyle(.secondary) }
                 ForEach(model.pastHomework) { e in
@@ -227,6 +231,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .sheet(isPresented: $levels) { LevelsSurvey() }
         .frame(maxWidth: 640)
         .frame(maxWidth: .infinity)
     }

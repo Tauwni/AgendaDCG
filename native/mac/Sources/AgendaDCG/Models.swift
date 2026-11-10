@@ -21,6 +21,7 @@ struct AgendaEvent: Codable, Identifiable, Hashable {
     var history: [HistoryEntry]?
     var end: String?
     var attachments: [PdfFile]?
+    var revision: Bool?
 
     var isDeadline: Bool { Kind.deadline.contains(kind) }
     var isClass: Bool { id.hasPrefix("edt:") }
@@ -30,7 +31,7 @@ struct AgendaEvent: Codable, Identifiable, Hashable {
 
 /// Emploi du temps fixe, lu dans public/schedule.json (modifiable sans mettre à jour l'app).
 struct Schedule: Codable {
-    struct Slot: Codable { var day: Int; var start: String; var end: String; var subject: String; var title: String; var color: String }
+    struct Slot: Codable { var day: Int; var start: String; var end: String; var subject: String; var title: String; var color: String; var kind: String? }
     var classes: [Slot]
     var companyDays: [Int]
     var from: String?
@@ -45,7 +46,7 @@ struct Schedule: Codable {
     func classes(on day: String) -> [AgendaEvent] {
         guard inTerm(day) else { return [] }
         return classes.enumerated().filter { $0.element.day == Self.weekday(day) }.map { i, c in
-            AgendaEvent(id: "edt:\(day):\(i)", kind: "cours", title: c.title, subject: c.subject, date: day, time: c.start, color: c.color, notes: nil, chapters: [], end: c.end)
+            AgendaEvent(id: "edt:\(day):\(i)", kind: "cours", title: c.title, subject: c.subject, date: day, time: c.start, color: c.color, notes: nil, chapters: [], end: c.end, revision: c.kind == "revision")
         }
     }
     func isCompanyDay(_ day: String) -> Bool { inTerm(day) && companyDays.contains(Self.weekday(day)) }
@@ -90,6 +91,7 @@ struct Profile: Codable, Hashable {
     var done: [String]
     var grades: [Grade]
     var prefs: Prefs
+    var levels: [String: Int]?
 }
 
 enum Kind {

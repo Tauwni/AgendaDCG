@@ -430,6 +430,13 @@ struct WeekColumns: View {
                     .background(.background, in: RoundedRectangle(cornerRadius: 5))
                     .onTapGesture { detail = t }
             }
+            if e.revision == true && !model.hasLevels { Text("✨ Clique pour personnaliser").font(.caption2.weight(.semibold)) }
+            ForEach(model.revisionFor(e), id: \.self) { p in
+                Text("📖 " + p.label).font(.caption2.weight(.semibold)).lineLimit(1)
+                    .padding(.horizontal, 5).padding(.vertical, 3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.background, in: RoundedRectangle(cornerRadius: 5))
+            }
         }
         .padding(5)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -507,16 +514,31 @@ struct ClassDetail: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) var dismiss
     let event: AgendaEvent
+    @State private var levels = false
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Label("Cours · emploi du temps", systemImage: "graduationcap").foregroundStyle(eventColor(event.color))
+                Label(event.revision == true ? "Révision · créneau conseillé" : "Cours · emploi du temps", systemImage: event.revision == true ? "brain.head.profile" : "graduationcap").foregroundStyle(eventColor(event.color))
                 Spacer()
                 Button("Fermer") { dismiss() }.keyboardShortcut(.cancelAction)
             }
             Text(event.title).font(.title.bold())
             Label("\(longDate(event.date).capitalized) · \(event.timeLabel ?? "")", systemImage: "clock").foregroundStyle(.secondary)
             if let s = event.subject { Label(s, systemImage: "book.closed").foregroundStyle(.secondary) }
+            if event.revision == true {
+                if model.hasLevels {
+                    Text("Au programme de ce créneau").font(.headline)
+                    let picks = model.revisionFor(event)
+                    if picks.isEmpty { Text("Rien de prioritaire : reprends librement un chapitre.").foregroundStyle(.secondary) }
+                    ForEach(picks, id: \.self) { p in
+                        VStack(alignment: .leading, spacing: 2) { Text(p.label).font(.body.weight(.semibold)); Text(p.why).font(.caption).foregroundStyle(.secondary) }
+                    }
+                    Button("Modifier mon niveau par matière") { levels = true }
+                } else {
+                    Button("Personnaliser mes révisions (1 min)") { levels = true }.buttonStyle(.borderedProminent)
+                }
+                Text("Le matin pour la mémorisation, des séances de 1 h 30 à 2 h 30 avec pauses, et une reprise des cours de jeudi et vendredi dans les 48 h.").font(.caption).foregroundStyle(.secondary)
+            }
             let chs = model.chapters.filter { $0.subject == event.subject }
             if !chs.isEmpty {
                 Text("Cours de la matière").font(.headline)
@@ -531,6 +553,39 @@ struct ClassDetail: View {
         }
         .padding(24)
         .frame(width: 500, height: 520)
+        .sheet(isPresented: $levels) { LevelsSurvey() }
+    }
+}
+
+/// Mini-sondage : niveau de 1 à 10 dans chaque matière (privé).
+struct LevelsSurvey: View {
+    @EnvironmentObject var model: AppModel
+    @Environment(\.dismiss) var dismiss
+    @State private var values: [String: Double] = [:]
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Mon niveau").font(.title2.bold())
+            Text("Note de 1 à 10 ton niveau dans chaque matière. Les créneaux de révision du week-end te proposeront plus souvent tes matières faibles, en plus des chapitres de tes prochaines évals. Personne d'autre ne voit tes réponses.").foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            ForEach(model.revSubjects, id: \.self) { s in
+                let v = Int(values[s] ?? 5)
+                VStack(alignment: .leading) {
+                    HStack { Text(s).font(.headline); Spacer(); Text("\(v)/10 · \(AppModel.levelWord(v))").foregroundStyle(.secondary) }
+                    Slider(value: Binding(get: { values[s] ?? 5 }, set: { values[s] = $0.rounded() }), in: 1...10, step: 1).tint(.red)
+                }
+            }
+            Spacer(minLength: 0)
+            HStack {
+                Spacer()
+                Button("Annuler") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("Enregistrer") {
+                    let out = Dictionary(uniqueKeysWithValues: model.revSubjects.map { ($0, Int(values[$0] ?? 5)) })
+                    Task { if await model.saveLevels(out) { model.show("Révisions personnalisées ✓"); dismiss() } }
+                }.keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(24)
+        .frame(width: 480)
+        .onAppear { for s in model.revSubjects { values[s] = Double(model.levelOf(s) ?? 5) } }
     }
 }
 

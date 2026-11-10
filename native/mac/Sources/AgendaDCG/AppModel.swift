@@ -100,6 +100,57 @@ final class AppModel: ObservableObject {
     func inClass(_ e: AgendaEvent) -> Bool {
         !e.isClass && classFor(e.date, e.subject) != nil
     }
+    // MARK: Révisions personnalisées (niveau 1–10 par matière, comme sur le site)
+    struct RevisionPick: Hashable { var subject: String; var chapter: Chapter?; var why: String; var score: Double
+        var label: String { "\(subject.components(separatedBy: " · ").first ?? subject) · \(chapter?.title ?? "reprendre le cours")" } }
+    var revSubjects: [String] {
+        var seen: [String] = []
+        for c in schedule?.classes ?? [] where c.kind != "revision" && !seen.contains(c.subject) { seen.append(c.subject) }
+        return seen
+    }
+    var hasLevels: Bool { !(profile?.levels ?? [:]).isEmpty }
+    func levelOf(_ s: String) -> Int? { profile?.levels?.first { sameSubject($0.key, s) }?.value }
+    static func levelWord(_ n: Int) -> String { n <= 3 ? "à reprendre" : n <= 5 ? "fragile" : n <= 7 ? "correct" : "solide" }
+    private func saturday(_ day: String) -> Date { let wd = Schedule.weekday(day); return addDays(parseISO(day), wd == 0 ? -1 : 6 - wd) }
+    func revisionPicks(_ day: String) -> [RevisionPick] {
+        let sat = iso(saturday(day))
+        let weekN = Int(floor(parseISO(sat).timeIntervalSince1970 / (7 * 86400)))
+        var items: [RevisionPick] = [], seen = Set<String>()
+        let deadlines = events.filter { ["eval", "examen", "devoir", "exercice"].contains($0.kind) && $0.date > sat && !isDone($0) }
+        for s in revSubjects {
+            let lvl = levelOf(s) ?? 5, weak = Double(11 - lvl) / 10
+            let chs = chapters.filter { sameSubject($0.subject, s) }.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+            for e in deadlines where sameSubject(e.subject, s) {
+                let days = daysBetween(sat, e.date)
+                if days > 14 { continue }
+                let linked = (e.chapters ?? []).compactMap(chapter)
+                for ch in (linked.isEmpty ? [nil] : linked.map { Optional($0) }) {
+                    let id = ch?.id ?? "s:\(s)\(e.id)"
+                    if seen.contains(id) { continue }; seen.insert(id)
+                    items.append(.init(subject: s, chapter: ch, why: "\(Kind.label(e.kind)) dans \(days) jour\(days > 1 ? "s" : "")", score: 4 + 3 * (1 - Double(days) / 14) + 2 * weak))
+                }
+            }
+            let n = lvl <= 3 ? 3 : lvl <= 6 ? 2 : 1
+            for i in 0..<n {
+                let ch: Chapter? = chs.isEmpty ? nil : chs[(weekN * n + i) % chs.count]
+                let id = ch?.id ?? "s:\(s)\(i)"
+                if seen.contains(id) || (ch == nil && i > 0) { continue }; seen.insert(id)
+                items.append(.init(subject: s, chapter: ch, why: "Niveau \(lvl)/10 · \(Self.levelWord(lvl))", score: 3 * weak - Double(i) * 0.3))
+            }
+        }
+        return items.sorted { $0.score > $1.score }
+    }
+    func revisionFor(_ e: AgendaEvent) -> [RevisionPick] {
+        guard e.revision == true, hasLevels else { return [] }
+        let sat = saturday(e.date)
+        let slots = [iso(sat), iso(addDays(sat, 1))].flatMap { (schedule?.classes(on: $0) ?? []).filter { $0.revision == true } }
+        guard let i = slots.firstIndex(where: { $0.id == e.id }) else { return [] }
+        return Array(revisionPicks(e.date).dropFirst(i * 2).prefix(2))
+    }
+    func saveLevels(_ levels: [String: Int]) async -> Bool {
+        await run { profile = try await API.call("profile/levels", method: "PUT", body: ["levels": levels]) }
+    }
+
     var pastHomework: [AgendaEvent] { let t = iso(Date()); return events.filter { $0.date < t && !($0.attachments ?? []).isEmpty }.sorted { $0.date > $1.date } }
 
     /// Joint une photo ou un PDF à un devoir (rangé avec le devoir, pas dans les cours).

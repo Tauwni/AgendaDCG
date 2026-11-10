@@ -66,10 +66,23 @@ public static class Dialogs
     {
         Window? w = null;
         var body = new StackPanel();
-        body.Children.Add(H(8, Icon(Data.KindGlyph("cours"), 15, Theme.Of(e.Color)), T("Cours · emploi du temps", 14, FontWeights.SemiBold, Theme.Of(e.Color))));
+        body.Children.Add(H(8, Icon(Data.KindGlyph("cours"), 15, Theme.Of(e.Color)), T(e.Revision ? "Révision · créneau conseillé" : "Cours · emploi du temps", 14, FontWeights.SemiBold, Theme.Of(e.Color))));
         var title = T(e.Title, 24, FontWeights.Bold); title.Margin = new Thickness(0, 8, 0, 8); body.Children.Add(title);
         body.Children.Add(T($"{Data.Cap(Data.LongDate(e.Date))} · {e.TimeLabel}", 14, null, Theme.Text2));
         body.Children.Add(T(e.Subject ?? "", 14, null, Theme.Text2));
+        if (e.Revision)
+        {
+            if (S.HasLevels)
+            {
+                var h = T("Au programme de ce créneau", 16, FontWeights.Bold); h.Margin = new Thickness(0, 16, 0, 6); body.Children.Add(h);
+                var picks = S.RevisionFor(e);
+                if (picks.Count == 0) body.Children.Add(T("Rien de prioritaire : reprends librement un chapitre.", 13, null, Theme.Text2));
+                foreach (var p in picks) { var r = V(1, T(p.Label, 14, FontWeights.SemiBold), T(p.Why, 12, null, Theme.Text2)); r.Margin = new Thickness(0, 0, 0, 8); body.Children.Add(r); }
+            }
+            var lb = Btn(S.HasLevels ? "Modifier mon niveau par matière" : "Personnaliser mes révisions (1 min)", () => { w?.Close(); LevelsSurvey(); }, primary: !S.HasLevels);
+            lb.HorizontalAlignment = HorizontalAlignment.Left; lb.Margin = new Thickness(0, 10, 0, 0); body.Children.Add(lb);
+            var tip = T("Le matin pour la mémorisation, des séances de 1 h 30 à 2 h 30 avec pauses, et une reprise des cours de jeudi et vendredi dans les 48 h.", 12, null, Theme.Text2); tip.TextWrapping = TextWrapping.Wrap; tip.Margin = new Thickness(0, 10, 0, 0); body.Children.Add(tip);
+        }
         var chs = S.Chapters.Where(c => c.Subject == e.Subject).ToList();
         if (chs.Count > 0)
         {
@@ -81,6 +94,33 @@ public static class Dialogs
         var note = T("Revient chaque semaine.", 12, null, Theme.Text2); note.VerticalAlignment = VerticalAlignment.Center; actions.Children.Add(note);
         body.Children.Add(actions);
         w = Dialog(e.Title, body, 520);
+        w.ShowDialog();
+    }
+
+    /// Mini-sondage : niveau de 1 à 10 dans chaque matière (privé).
+    public static void LevelsSurvey()
+    {
+        Window? w = null;
+        var body = new StackPanel();
+        var intro = T("Note de 1 à 10 ton niveau dans chaque matière. Les créneaux de révision du week-end te proposeront plus souvent tes matières faibles, en plus des chapitres de tes prochaines évals. Personne d'autre ne voit tes réponses.", 13, null, Theme.Text2);
+        intro.TextWrapping = TextWrapping.Wrap; intro.Margin = new Thickness(0, 0, 0, 12); body.Children.Add(intro);
+        var sliders = new Dictionary<string, Slider>();
+        foreach (var s in S.RevSubjects())
+        {
+            var v = S.LevelOf(s) ?? 5;
+            var val = T($"{v}/10 · {Store.LevelWord(v)}", 13, null, Theme.Text2);
+            var sl = new Slider { Minimum = 1, Maximum = 10, Value = v, IsSnapToTickEnabled = true, TickFrequency = 1, Margin = new Thickness(0, 4, 0, 12) };
+            sl.ValueChanged += (_, _) => val.Text = $"{(int)sl.Value}/10 · {Store.LevelWord((int)sl.Value)}";
+            var head = new DockPanel(); DockPanel.SetDock(val, Dock.Right); head.Children.Add(val); head.Children.Add(T(s, 14, FontWeights.SemiBold));
+            body.Children.Add(head); body.Children.Add(sl); sliders[s] = sl;
+        }
+        var save = Btn("Enregistrer", async () =>
+        {
+            var levels = sliders.ToDictionary(kv => kv.Key, kv => (int)kv.Value.Value);
+            if (await Try(() => S.SaveLevels(levels))) { w!.Close(); Toast("Révisions personnalisées ✓"); }
+        }, primary: true);
+        save.HorizontalAlignment = HorizontalAlignment.Right; body.Children.Add(save);
+        w = Dialog("Mon niveau", body, 480);
         w.ShowDialog();
     }
 

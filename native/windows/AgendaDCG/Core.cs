@@ -26,6 +26,7 @@ public class AgendaEvent
     public string? UpdatedBy { get; set; }
     public string? End { get; set; }
     public List<PdfFile>? Attachments { get; set; }
+    [JsonIgnore] public bool Revision { get; set; }
     [JsonIgnore] public bool IsDeadline => Data.Deadline.Contains(Kind);
     [JsonIgnore] public bool IsClass => Id.StartsWith("edt:");
     [JsonIgnore] public string? TimeLabel => string.IsNullOrEmpty(Time) ? null : End == null ? Time : $"{Time}–{End}";
@@ -35,7 +36,7 @@ public class AgendaEvent
 /// Emploi du temps fixe, lu dans public/schedule.json (modifiable sans mettre à jour l'app).
 public class Schedule
 {
-    public class Slot { public int Day { get; set; } public string Start { get; set; } = ""; public string End { get; set; } = ""; public string Subject { get; set; } = ""; public string Title { get; set; } = ""; public string Color { get; set; } = "blue"; }
+    public class Slot { public int Day { get; set; } public string Start { get; set; } = ""; public string End { get; set; } = ""; public string Subject { get; set; } = ""; public string Title { get; set; } = ""; public string Color { get; set; } = "blue"; public string? Kind { get; set; } }
     public List<Slot> Classes { get; set; } = new();
     public List<int> CompanyDays { get; set; } = new();
     public string? From { get; set; }
@@ -49,7 +50,7 @@ public class Schedule
         var wd = (int)Data.Parse(day).DayOfWeek;
         return Classes.Select((c, i) => (c, i)).Where(x => x.c.Day == wd).Select(x => new AgendaEvent
         {
-            Id = $"edt:{day}:{x.i}", Kind = "cours", Title = x.c.Title, Subject = x.c.Subject, Date = day, Time = x.c.Start, End = x.c.End, Color = x.c.Color, Chapters = new(),
+            Id = $"edt:{day}:{x.i}", Kind = "cours", Title = x.c.Title, Subject = x.c.Subject, Date = day, Time = x.c.Start, End = x.c.End, Color = x.c.Color, Chapters = new(), Revision = x.c.Kind == "revision",
         }).ToList();
     }
     public bool IsCompanyDay(string day) => InTerm(day) && CompanyDays.Contains((int)Data.Parse(day).DayOfWeek);
@@ -99,6 +100,7 @@ public class Profile
     public List<string> Done { get; set; } = new();
     public List<Grade> Grades { get; set; } = new();
     public Prefs Prefs { get; set; } = new();
+    public Dictionary<string, int>? Levels { get; set; }
 }
 
 public static class Data
@@ -345,6 +347,60 @@ public class Store
     public async Task SaveGrades(List<Grade> grades)
     {
         Profile = await Api.Call<Profile>(HttpMethod.Put, "profile/grades", new { grades });
+        Notify();
+    }
+
+    // Révisions personnalisées (niveau 1–10 par matière, comme sur le site)
+    public record RevisionPick(string Subject, Chapter? Chapter, string Why, double Score)
+    {
+        public string Label => $"{Subject.Split(" · ")[0]} · {Chapter?.Title ?? "reprendre le cours"}";
+    }
+    public List<string> RevSubjects() => (Schedule?.Classes ?? new()).Where(c => c.Kind != "revision").Select(c => c.Subject).Distinct().ToList();
+    public bool HasLevels => (Profile?.Levels?.Count ?? 0) > 0;
+    public int? LevelOf(string s) { var l = Profile?.Levels; if (l == null) return null; foreach (var kv in l) if (SameSubject(kv.Key, s)) return kv.Value; return null; }
+    public static string LevelWord(int n) => n <= 3 ? "à reprendre" : n <= 5 ? "fragile" : n <= 7 ? "correct" : "solide";
+    static DateTime Saturday(string day) { var d = Data.Parse(day); var wd = (int)d.DayOfWeek; return d.AddDays(wd == 0 ? -1 : 6 - wd); }
+    public List<RevisionPick> RevisionPicks(string day)
+    {
+        var satD = Saturday(day); var sat = Data.Iso(satD);
+        var weekN = (int)Math.Floor((satD - new DateTime(1970, 1, 1)).TotalDays / 7);
+        var items = new List<RevisionPick>(); var seen = new HashSet<string>();
+        var deadlines = Events.Where(e => new[] { "eval", "examen", "devoir", "exercice" }.Contains(e.Kind) && string.CompareOrdinal(e.Date, sat) > 0 && !IsDone(e)).ToList();
+        foreach (var s in RevSubjects())
+        {
+            var lvl = LevelOf(s) ?? 5; var weak = (11 - lvl) / 10.0;
+            var chs = Chapters.Where(c => SameSubject(c.Subject, s)).OrderBy(c => System.Text.RegularExpressions.Regex.Replace(c.Title, @"\d+", m => m.Value.PadLeft(5, (char)48))).ToList();
+            foreach (var e in deadlines.Where(x => SameSubject(x.Subject, s)))
+            {
+                var days = (Data.Parse(e.Date) - satD).Days; if (days > 14) continue;
+                var linked = (e.Chapters ?? new()).Select(Chapter).Where(c => c != null).ToList();
+                foreach (var ch in linked.Count > 0 ? linked : new List<Chapter?> { null })
+                {
+                    var id = ch?.Id ?? $"s:{s}{e.Id}"; if (!seen.Add(id)) continue;
+                    items.Add(new(s, ch, $"{Data.KindLabel(e.Kind)} dans {days} jour{(days > 1 ? "s" : "")}", 4 + 3 * (1 - days / 14.0) + 2 * weak));
+                }
+            }
+            var n = lvl <= 3 ? 3 : lvl <= 6 ? 2 : 1;
+            for (var i = 0; i < n; i++)
+            {
+                var ch = chs.Count > 0 ? chs[(weekN * n + i) % chs.Count] : null;
+                var id = ch?.Id ?? $"s:{s}{i}"; if ((ch == null && i > 0) || !seen.Add(id)) continue;
+                items.Add(new(s, ch, $"Niveau {lvl}/10 · {LevelWord(lvl)}", 3 * weak - i * 0.3));
+            }
+        }
+        return items.OrderByDescending(x => x.Score).ToList();
+    }
+    public List<RevisionPick> RevisionFor(AgendaEvent e)
+    {
+        if (!e.Revision || !HasLevels) return new();
+        var sat = Saturday(e.Date);
+        var slots = new[] { Data.Iso(sat), Data.Iso(sat.AddDays(1)) }.SelectMany(k => (Schedule?.On(k) ?? new()).Where(x => x.Revision)).ToList();
+        var i = slots.FindIndex(x => x.Id == e.Id); if (i < 0) return new();
+        return RevisionPicks(e.Date).Skip(i * 2).Take(2).ToList();
+    }
+    public async Task SaveLevels(Dictionary<string, int> levels)
+    {
+        Profile = await Api.Call<Profile>(HttpMethod.Put, "profile/levels", new { levels });
         Notify();
     }
 
