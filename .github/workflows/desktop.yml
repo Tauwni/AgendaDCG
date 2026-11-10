@@ -8,46 +8,97 @@ on:
 permissions:
   contents: write
 
+env:
+  VELOPACK_VERSION: 0.0.1298
+
 jobs:
   release:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - name: Créer la release avant les builds (évite deux releases en parallèle)
-        run: gh release view "$TAG" -R "$REPO" >/dev/null 2>&1 || gh release create "$TAG" -R "$REPO" --title "Agenda DCG $TAG" --notes "Télécharge Agenda-DCG-Mac.dmg (Mac) ou Agenda-DCG-Windows-Setup.exe (Windows)."
+        run: gh release view "$TAG" -R "$REPO" >/dev/null 2>&1 || gh release create "$TAG" -R "$REPO" --title "Agenda DCG $TAG" --notes "Télécharge Agenda-DCG-Mac.dmg (Mac) ou Agenda-DCG-Windows-Setup.exe (Windows). Les apps déjà installées se mettent à jour toutes seules."
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
 
-  build:
+  mac:
     needs: release
     if: ${{ !failure() && !cancelled() }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        working-directory: desktop
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: desktop/package-lock.json
-      - run: npm ci
-      - name: Build et publication
-        run: npx electron-builder --publish ${{ startsWith(github.ref, 'refs/tags/') && 'always' || 'never' }}
+      - name: Version
+        run: echo "VERSION=$(echo '${{ github.ref_name }}' | sed -n 's/^v//p' | grep . || echo 0.0.1)" >> "$GITHUB_ENV"
+      - name: Build de l'app (Intel + Apple Silicon)
+        run: native/mac/build-app.sh --universal
+      - name: Vérification
+        run: |
+          lipo -info "native/mac/dist/Agenda DCG.app/Contents/MacOS/AgendaDCG"
+          /usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "native/mac/dist/Agenda DCG.app/Contents/Info.plist"
+      - name: Publication
+        if: startsWith(github.ref, 'refs/tags/')
+        run: gh release upload "${{ github.ref_name }}" native/mac/dist/Agenda-DCG-Mac.dmg native/mac/dist/Agenda-DCG-Mac.zip --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_IDENTITY_AUTO_DISCOVERY: "false"
       - uses: actions/upload-artifact@v5
         with:
-          name: agenda-dcg-${{ matrix.os }}
+          name: agenda-dcg-mac
           path: |
-            desktop/dist/*.dmg
-            desktop/dist/*.exe
-          if-no-files-found: error
+            native/mac/dist/*.dmg
+            native/mac/dist/*.zip
+
+  windows:
+    needs: release
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+      - name: Version
+        run: |
+          $v = "${{ github.ref_name }}" -replace '^v', ''
+          if ($v -notmatch '^\d+\.\d+\.\d+$') { $v = '0.0.1' }
+          "VERSION=$v" >> $env:GITHUB_ENV
+      - name: Build
+        working-directory: native/windows/AgendaDCG
+        run: dotnet publish -c Release -r win-x64 --self-contained true -p:Version=$env:VERSION -p:PublishReadyToRun=true -o ../publish
+      - name: Test de lancement (capture d'écran)
+        working-directory: native/windows
+        run: |
+          $p = Start-Process -FilePath publish/AgendaDCG.exe -PassThru
+          Start-Sleep -Seconds 15
+          if ($p.HasExited) { throw "L'app s'est fermée au lancement (code $($p.ExitCode))" }
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+          [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+          $bmp.Save("$PWD/capture-windows.png")
+          Stop-Process -Id $p.Id
+      - name: Paquet Velopack (installeur + mises à jour)
+        working-directory: native/windows
+        run: |
+          dotnet tool install -g vpk --version $env:VELOPACK_VERSION
+          vpk pack -u AgendaDCG -v $env:VERSION -p publish -e AgendaDCG.exe --packTitle "Agenda DCG" --packAuthors Tauwni --icon AgendaDCG/icon.ico -o Releases
+          Copy-Item Releases/AgendaDCG-win-Setup.exe Releases/Agenda-DCG-Windows-Setup.exe
+          Get-ChildItem Releases
+      - name: Publication
+        if: startsWith(github.ref, 'refs/tags/')
+        working-directory: native/windows/Releases
+        run: |
+          $files = Get-ChildItem -File | Where-Object { $_.Name -ne 'AgendaDCG-win-Setup.exe' -and $_.Name -notlike '*Portable*' } | ForEach-Object { $_.Name }
+          gh release upload "${{ github.ref_name }}" @files --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v5
+        with:
+          name: agenda-dcg-windows
+          path: |
+            native/windows/Releases/Agenda-DCG-Windows-Setup.exe
+            native/windows/capture-windows.png

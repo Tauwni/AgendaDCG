@@ -205,7 +205,7 @@ flowchart LR
 
 Les PDF ne passent pas par Netlify. L'API donne au navigateur un lien signé valable quelques minutes, et le navigateur envoie ou lit le PDF directement sur le Worker Cloudflare, qui le stocke dans R2. Sans lien signé, le Worker refuse tout accès.
 
-Les apps Mac et Windows sont des fenêtres [Electron](https://www.electronjs.org/) qui affichent le site. Il n'y a qu'une seule interface et une seule source de données, donc rien à synchroniser à la main, et les apps profitent de chaque mise à jour du site sans être réinstallées.
+Les apps Mac et Windows sont de **vraies applications natives** (SwiftUI sur Mac, WPF/.NET sur Windows) qui parlent à la même API que le site : tout reste synchronisé. Elles sont légères (quelques Mo sur Mac), lisent les PDF en natif, programment les rappels dans le système et **se mettent à jour toutes seules** à partir des releases GitHub.
 
 | Partie | Technologie |
 | --- | --- |
@@ -216,7 +216,8 @@ Les apps Mac et Windows sont des fenêtres [Electron](https://www.electronjs.org
 | Connexion | Mot de passe partagé, cookie de session `HttpOnly` signé |
 | Compression et conversion | [pdf-lib](https://pdf-lib.js.org/) et Canvas, directement dans le navigateur |
 | Garde-fou gratuit | [Durable Object](https://developers.cloudflare.com/durable-objects/) qui compte le stockage et les opérations R2 |
-| Apps de bureau | [Electron](https://www.electronjs.org/) et [electron-builder](https://www.electron.build/) |
+| App Mac | [SwiftUI](https://developer.apple.com/xcode/swiftui/), PDFKit, Swift Charts, notifications locales |
+| App Windows | [WPF](https://learn.microsoft.com/dotnet/desktop/wpf/) (.NET 8), notifications Windows, installeur et mises à jour [Velopack](https://velopack.io/) |
 | Builds | [GitHub Actions](https://github.com/Tauwni/AgendaDCG/actions) sur macOS et Windows |
 
 ## Développement
@@ -251,14 +252,23 @@ et crée un `.env` à la racine du projet avec `PDF_WORKER_URL=http://localhost:
 </details>
 
 <details>
-<summary><b>Lancer l'app de bureau</b></summary>
+<summary><b>Lancer les apps de bureau</b></summary>
 
 <br>
 
+**Mac** (Swift 5.10+ ; `AGENDA_SITE` permet de viser un serveur local) :
+
 ```bash
-cd desktop
-npm install
-npm start
+cd native/mac
+VERSION=2.0.0 ./build-app.sh
+open "dist/Agenda DCG.app"
+```
+
+**Windows** (.NET 8 SDK) :
+
+```bash
+cd native/windows/AgendaDCG
+dotnet run
 ```
 
 </details>
@@ -274,14 +284,14 @@ npm start
 netlify deploy --prod
 ```
 
-**Les apps :** augmente `version` dans [`desktop/package.json`](desktop/package.json), puis pousse un tag :
+**Les apps :** pousse un tag de version, rien d'autre à modifier :
 
 ```bash
-git tag v1.0.1
-git push origin v1.0.1
+git tag v2.0.1
+git push origin v2.0.1
 ```
 
-[GitHub Actions](.github/workflows/desktop.yml) construit le `.dmg` et le `.exe`, puis les publie dans une nouvelle [release](https://github.com/Tauwni/AgendaDCG/releases).
+[GitHub Actions](.github/workflows/desktop.yml) construit l'app Mac (`.dmg` + `.zip`) et l'app Windows (installeur Velopack), les publie dans une nouvelle [release](https://github.com/Tauwni/AgendaDCG/releases), et les apps déjà installées se mettent à jour d'elles-mêmes.
 
 </details>
 
@@ -299,10 +309,10 @@ AgendaDCG/
 │   └── api.mjs             # API : connexion, évals, chapitres, PDF
 ├── pdf-worker/
 │   └── src/index.js        # Worker Cloudflare : envoi et lecture des PDF dans R2
-├── desktop/
-│   ├── main.js             # Fenêtre Electron
-│   ├── offline.html        # Écran affiché sans connexion
-│   └── build/icon.svg      # Icône de l'app
+├── native/
+│   ├── mac/                # App Mac native (SwiftUI) + build-app.sh
+│   ├── windows/AgendaDCG/  # App Windows native (WPF, .NET 8)
+│   └── assets/icon.svg     # Icône des apps
 ├── .github/workflows/
 │   └── desktop.yml         # Build des apps Mac et Windows
 └── netlify.toml

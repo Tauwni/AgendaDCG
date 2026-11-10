@@ -1,0 +1,343 @@
+using System.Globalization;
+using System.IO;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace AgendaDCG;
+
+public record HistoryEntry(string? By, string? At, string? Action);
+
+public class AgendaEvent
+{
+    public string Id { get; set; } = "";
+    public string Kind { get; set; } = "eval";
+    public string Title { get; set; } = "";
+    public string? Subject { get; set; }
+    public string Date { get; set; } = "";
+    public string? Time { get; set; }
+    public string? Color { get; set; }
+    public string? Notes { get; set; }
+    public List<string>? Chapters { get; set; }
+    public string? CreatedBy { get; set; }
+    public string? UpdatedBy { get; set; }
+    [JsonIgnore] public bool IsDeadline => Data.Deadline.Contains(Kind);
+    [JsonIgnore] public string SortKey => Date + (Time ?? "");
+}
+
+public class PdfFile
+{
+    public string Key { get; set; } = "";
+    public string Name { get; set; } = "";
+    public long? Size { get; set; }
+}
+
+public class Chapter
+{
+    public string Id { get; set; } = "";
+    public string Subject { get; set; } = "";
+    public string Title { get; set; } = "";
+    public Dictionary<string, PdfFile?> Files { get; set; } = new();
+    public PdfFile? File(string slot) => Files.TryGetValue(slot, out var f) ? f : null;
+}
+
+public class Grade
+{
+    public string Id { get; set; } = "";
+    public string Subject { get; set; } = "";
+    public string Title { get; set; } = "";
+    public string Date { get; set; } = "";
+    public string Category { get; set; } = "controle";
+    public double Value { get; set; }
+    public double OutOf { get; set; } = 20;
+    public double Coef { get; set; } = 1;
+    [JsonIgnore] public double On20 => OutOf > 0 ? Value / OutOf * 20 : 0;
+}
+
+public class Prefs
+{
+    public bool OnNew { get; set; }
+    public bool Daily { get; set; }
+    public bool Weekly { get; set; }
+    public List<int> Before { get; set; } = new();
+}
+
+public class Profile
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public List<string> Done { get; set; } = new();
+    public List<Grade> Grades { get; set; } = new();
+    public Prefs Prefs { get; set; } = new();
+}
+
+public static class Data
+{
+    public static readonly (string Id, string Label, string Glyph)[] Kinds =
+    {
+        ("eval", "Évaluation", ""), ("examen", "Examen blanc", ""), ("devoir", "Devoir", ""),
+        ("exercice", "Exercice", ""), ("cours", "Cours", ""), ("revision", "Révision", ""), ("autre", "Autre", ""),
+    };
+    public static readonly HashSet<string> Deadline = new() { "eval", "examen", "devoir", "exercice" };
+    public static string KindLabel(string k) => Kinds.FirstOrDefault(x => x.Id == k).Label ?? "Évaluation";
+    public static string KindGlyph(string k) => Kinds.FirstOrDefault(x => x.Id == k).Glyph ?? "";
+
+    public static readonly (string Id, string Label)[] Slots = { ("cours", "Fiche de cours"), ("sujet", "Sujet type"), ("corrige", "Corrigé"), ("topexo", "TOP EXO") };
+    public static readonly (string Id, string Label)[] Categories = { ("controle", "Contrôle UFA"), ("devoir", "Devoir"), ("examen", "Examen blanc"), ("entrainement", "Entraînement") };
+    public static readonly string[] Subjects =
+    {
+        "UE1 · Fondamentaux du droit", "UE2 · Droit des sociétés", "UE3 · Droit social", "UE4 · Droit fiscal",
+        "UE5 · Économie contemporaine", "UE6 · Finance d'entreprise", "UE7 · Management", "UE8 · Systèmes d'information de gestion",
+        "UE9 · Introduction à la comptabilité", "UE10 · Comptabilité approfondie", "UE11 · Contrôle de gestion",
+        "UE12 · Anglais appliqué aux affaires", "UE13 · Communication professionnelle",
+    };
+    public static readonly string[] ColorNames = { "red", "orange", "yellow", "green", "blue", "purple", "brown" };
+    public static string ColorHex(string? c) => c switch
+    {
+        "red" => "#FF3B30", "orange" => "#FF9500", "yellow" => "#FFCC00", "green" => "#34C759",
+        "purple" => "#AF52DE", "brown" => "#A2845E", _ => "#007AFF",
+    };
+
+    public static readonly CultureInfo Fr = new("fr-FR");
+    public static string Iso(DateTime d) => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    public static DateTime Parse(string s) => DateTime.TryParseExact(s, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d : DateTime.Today;
+    public static DateTime Monday(DateTime d) => d.Date.AddDays(-(((int)d.DayOfWeek + 6) % 7));
+    public static string LongDate(string s) => Parse(s).ToString("dddd d MMMM", Fr);
+    public static string Cap(string s) => s.Length == 0 ? s : char.ToUpper(s[0]) + s[1..];
+    public static string Num(double n, int digits = 1) => Math.Round(n, digits).ToString("0.##", Fr);
+    public static string Size(long n) => n > 1048576 ? $"{Num(n / 1048576.0)} Mo" : $"{Math.Max(1, n / 1024)} Ko";
+
+    public static string Relative(string s)
+    {
+        var n = (Parse(s) - DateTime.Today).Days;
+        return n switch { 0 => "Aujourd'hui", 1 => "Demain", -1 => "Hier", >= 2 and <= 6 => $"Dans {n} jours", _ => Cap(LongDate(s)) };
+    }
+
+    static readonly Dictionary<int, Dictionary<string, string>> holidayCache = new();
+    public static string? Holiday(string date)
+    {
+        var year = int.Parse(date[..4]);
+        if (!holidayCache.TryGetValue(year, out var list))
+        {
+            int a = year % 19, b = year / 100, c = year % 100, d = b / 4, e = b % 4, f = (b + 8) / 25, g = (b - f + 1) / 3;
+            int h = (19 * a + b - d - g + 15) % 30, i = c / 4, k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = (a + 11 * h + 22 * l) / 451;
+            var easter = new DateTime(year, (h + l - 7 * m + 114) / 31, (h + l - 7 * m + 114) % 31 + 1);
+            list = new()
+            {
+                [$"{year}-01-01"] = "Jour de l'an", [Iso(easter.AddDays(1))] = "Lundi de Pâques", [$"{year}-05-01"] = "Fête du Travail",
+                [$"{year}-05-08"] = "Victoire 1945", [Iso(easter.AddDays(39))] = "Ascension", [Iso(easter.AddDays(50))] = "Lundi de Pentecôte",
+                [$"{year}-07-14"] = "Fête nationale", [$"{year}-08-15"] = "Assomption", [$"{year}-11-01"] = "Toussaint",
+                [$"{year}-11-11"] = "Armistice 1918", [$"{year}-12-25"] = "Noël",
+            };
+            holidayCache[year] = list;
+        }
+        return list.TryGetValue(date, out var name) ? name : null;
+    }
+
+    public static double? Average(IEnumerable<Grade> list)
+    {
+        var c = list.Where(g => g.Category != "entrainement").ToList();
+        var coefs = c.Sum(g => g.Coef);
+        return coefs > 0 ? c.Sum(g => g.On20 * g.Coef) / coefs : null;
+    }
+}
+
+public class ApiException(string message, int status) : Exception(message) { public int Status { get; } = status; }
+
+public static class Api
+{
+    public static readonly Uri Site = new(Environment.GetEnvironmentVariable("AGENDA_SITE") ?? "https://agendadcg.netlify.app");
+    public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
+    static readonly string Dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AgendaDCG");
+    static readonly string CookieFile = Path.Combine(Dir, "session.json");
+    static Dictionary<string, string> cookies = Load();
+    public static readonly HttpClient Http = new(new HttpClientHandler { UseCookies = false, AllowAutoRedirect = true }) { Timeout = TimeSpan.FromSeconds(60) };
+
+    static Dictionary<string, string> Load()
+    {
+        try { return JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(CookieFile)) ?? new(); } catch { return new(); }
+    }
+    static void Save() { Directory.CreateDirectory(Dir); File.WriteAllText(CookieFile, JsonSerializer.Serialize(cookies)); }
+    public static void ClearSession() { cookies.Clear(); Save(); }
+
+    public static HttpRequestMessage Request(HttpMethod method, string path, object? body = null)
+    {
+        var req = new HttpRequestMessage(method, new Uri(Site, "api/" + path));
+        if (cookies.Count > 0) req.Headers.Add("Cookie", string.Join("; ", cookies.Select(c => $"{c.Key}={c.Value}")));
+        if (body != null) req.Content = JsonContent.Create(body, body.GetType(), options: Json);
+        return req;
+    }
+
+    static void Store(HttpResponseMessage res)
+    {
+        if (res.RequestMessage?.RequestUri?.Host != Site.Host || !res.Headers.TryGetValues("Set-Cookie", out var lines)) return;
+        foreach (var line in lines)
+        {
+            var kv = line.Split(';')[0].Split('=', 2);
+            if (kv.Length < 1 || (kv[0] != "agenda_session" && kv[0] != "agenda_profile")) continue;
+            var value = kv.Length > 1 ? kv[1] : "";
+            if (value == "" || line.Contains("Max-Age=0")) cookies.Remove(kv[0]); else cookies[kv[0]] = value;
+        }
+        Save();
+    }
+
+    public static async Task<(string Body, int Status)> Raw(HttpMethod method, string path, object? body = null)
+    {
+        using var res = await Http.SendAsync(Request(method, path, body));
+        Store(res);
+        return (await res.Content.ReadAsStringAsync(), (int)res.StatusCode);
+    }
+
+    public static async Task<T> Call<T>(HttpMethod method, string path, object? body = null)
+    {
+        var (text, status) = await Raw(method, path, body);
+        if (status < 200 || status >= 300)
+        {
+            string? msg = null;
+            try { msg = JsonDocument.Parse(text).RootElement.GetProperty("error").GetString(); } catch { }
+            throw new ApiException(msg ?? $"Erreur {status}", status);
+        }
+        return JsonSerializer.Deserialize<T>(text, Json)!;
+    }
+
+    public static Task<T> Get<T>(string path) => Call<T>(HttpMethod.Get, path);
+    public static string Q(string s) => Uri.EscapeDataString(s);
+}
+
+/// État partagé de l'app, rafraîchi toutes les 2 minutes.
+public class Store
+{
+    public static readonly Store I = new();
+    public List<AgendaEvent> Events = new();
+    public List<Chapter> Chapters = new();
+    public Profile? Profile;
+    public bool Offline;
+    public event Action? Changed;
+
+    public string Name => Profile?.Name ?? "";
+    public bool IsDone(AgendaEvent e) => Profile?.Done.Contains(e.Id) ?? false;
+    public Chapter? Chapter(string id) => Chapters.FirstOrDefault(c => c.Id == id);
+    public List<AgendaEvent> On(string day) => Events.Where(e => e.Date == day).OrderBy(e => e.SortKey).ToList();
+    public List<string> CourseSubjects()
+    {
+        var have = Chapters.Select(c => c.Subject).ToHashSet();
+        return Data.Subjects.Where(have.Contains).Concat(have.Except(Data.Subjects).OrderBy(s => s)).ToList();
+    }
+    public void Notify() => Changed?.Invoke();
+
+    public async Task Refresh()
+    {
+        try
+        {
+            var ev = await Api.Get<List<AgendaEvent>>("events");
+            var ch = await Api.Get<List<Chapter>>("chapters");
+            var previous = Events.Select(e => e.Id).ToHashSet();
+            var first = Events.Count == 0;
+            Events = ev;
+            Chapters = ch.OrderBy(c => c.Title, StringComparer.Create(Data.Fr, CompareOptions.IgnoreCase)).ToList();
+            try { Profile = await Api.Get<Profile>("profile"); } catch { }
+            Offline = false;
+            if (!first && Profile?.Prefs.OnNew == true)
+                foreach (var n in ev.Where(e => !previous.Contains(e.Id) && e.IsDeadline && e.CreatedBy != Name))
+                    Notifier.Now($"Nouveau : {Data.KindLabel(n.Kind).ToLower()}", $"{n.Title} · {Data.LongDate(n.Date)}");
+            Notifier.Schedule(Events, Profile);
+        }
+        catch (ApiException e) when (e.Status == 401) { throw; }
+        catch { Offline = true; }
+        Notify();
+    }
+
+    public async Task Save(AgendaEvent ev, bool isNew)
+    {
+        var body = new Dictionary<string, object?>
+        {
+            ["kind"] = ev.Kind, ["title"] = ev.Title, ["subject"] = ev.Subject ?? "", ["date"] = ev.Date, ["time"] = ev.Time ?? "",
+            ["color"] = ev.Color ?? "blue", ["notes"] = ev.Notes ?? "", ["chapters"] = ev.Chapters ?? new(), ["by"] = Name,
+        };
+        var saved = await Api.Call<AgendaEvent>(isNew ? HttpMethod.Post : HttpMethod.Put, isNew ? "events" : $"events/{ev.Id}", body);
+        Events.RemoveAll(e => e.Id == saved.Id);
+        Events.Add(saved);
+        Notify();
+    }
+
+    public async Task Delete(AgendaEvent ev)
+    {
+        await Api.Call<JsonElement>(HttpMethod.Delete, $"events/{ev.Id}?by={Api.Q(Name)}");
+        Events.RemoveAll(e => e.Id == ev.Id);
+        Notify();
+    }
+
+    public async Task ToggleDone(AgendaEvent ev)
+    {
+        var done = !IsDone(ev);
+        Profile = await Api.Call<Profile>(HttpMethod.Put, "profile/done", new { @event = ev.Id, done });
+        Notifier.Schedule(Events, Profile);
+        Notify();
+    }
+
+    public async Task SaveGrades(List<Grade> grades)
+    {
+        Profile = await Api.Call<Profile>(HttpMethod.Put, "profile/grades", new { grades });
+        Notify();
+    }
+
+    public async Task SavePrefs(Prefs prefs)
+    {
+        Profile = await Api.Call<Profile>(HttpMethod.Put, "profile/prefs", new { prefs });
+        Notifier.Schedule(Events, Profile);
+        Notify();
+    }
+
+    public async Task SaveChapter(string? id, string subject, string title)
+    {
+        var ch = await Api.Call<Chapter>(id == null ? HttpMethod.Post : HttpMethod.Put, id == null ? "chapters" : $"chapters/{id}", new { subject, title, by = Name });
+        Chapters.RemoveAll(c => c.Id == ch.Id);
+        Chapters.Add(ch);
+        Notify();
+    }
+
+    public async Task DeleteChapter(Chapter ch)
+    {
+        await Api.Call<JsonElement>(HttpMethod.Delete, $"chapters/{ch.Id}?by={Api.Q(Name)}");
+        await Refresh();
+    }
+
+    record Start(string Key, string UploadUrl);
+
+    public async Task Upload(string path, Chapter chapter, string slot)
+    {
+        var data = await File.ReadAllBytesAsync(path);
+        if (data.Length > 100 * 1024 * 1024) throw new ApiException("PDF trop lourd (max 100 Mo)", 413);
+        var name = Path.GetFileName(path);
+        var s = await Api.Call<Start>(HttpMethod.Post, "files/start", new { chapter = chapter.Id, slot, by = Name, name, size = data.Length });
+        using var put = new HttpRequestMessage(HttpMethod.Put, s.UploadUrl) { Content = new ByteArrayContent(data) };
+        put.Content.Headers.ContentType = new("application/pdf");
+        using var res = await Api.Http.SendAsync(put);
+        if (!res.IsSuccessStatusCode) throw new ApiException("Envoi du PDF impossible", (int)res.StatusCode);
+        var ch = await Api.Call<Chapter>(HttpMethod.Post, "files/finish", new { chapter = chapter.Id, slot, key = s.Key, name, by = Name });
+        Chapters.RemoveAll(c => c.Id == ch.Id);
+        Chapters.Add(ch);
+        Notify();
+    }
+
+    public async Task DeleteFile(PdfFile f, Chapter chapter, string slot)
+    {
+        var ch = await Api.Call<Chapter>(HttpMethod.Delete, $"files/{f.Key}?chapter={chapter.Id}&slot={slot}&by={Api.Q(Name)}");
+        Chapters.RemoveAll(c => c.Id == ch.Id);
+        Chapters.Add(ch);
+        Notify();
+    }
+
+    public async Task<string> Download(PdfFile f)
+    {
+        using var res = await Api.Http.SendAsync(Api.Request(HttpMethod.Get, $"files/{f.Key}"));
+        if (!res.IsSuccessStatusCode) throw new ApiException("PDF indisponible", (int)res.StatusCode);
+        var dir = Path.Combine(Path.GetTempPath(), "AgendaDCG", f.Key);
+        Directory.CreateDirectory(dir);
+        var dest = Path.Combine(dir, string.Join("_", f.Name.Split(Path.GetInvalidFileNameChars())));
+        await File.WriteAllBytesAsync(dest, await res.Content.ReadAsByteArrayAsync());
+        return dest;
+    }
+}
