@@ -27,7 +27,16 @@
   for = "/index.html"
   [headers.values]
     Cache-Control = "no-cache"
+
+# L'emploi du temps est modifiable depuis /admin : servi par l'API (repli sur schedule-default.json)
+[[redirects]]
+  from = "/schedule.json"
+  to = "/api/schedule"
+  status = 200
+  force = true
+
 [[headers]]
-  for = "/schedule.json"
+  for = "/admin"
   [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
     Cache-Control = "no-cache"

@@ -11,6 +11,7 @@ enum API {
         c.httpCookieStorage = nil
         c.requestCachePolicy = .reloadIgnoringLocalCacheData
         c.timeoutIntervalForRequest = 30
+        c.httpAdditionalHeaders = ["User-Agent": "AgendaDCG-Mac/\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")"]
         return URLSession(configuration: c)
     }()
 

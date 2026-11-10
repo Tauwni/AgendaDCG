@@ -1,5 +1,6 @@
 import { getStore } from "@netlify/blobs";
 import { createHmac, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
+import { handleAdmin, readSchedule } from "../lib/admin.mjs";
 import { KINDS, events, profiles, listAll, profileId, pushReady, sendPush, frDate, describe } from "../lib/shared.mjs";
 
 const COOKIE = "agenda_session";
@@ -236,7 +237,18 @@ async function handleProfile(req, url, id, method) {
   const profile = await profiles().get(pid, { type: "json" });
   if (!profile) return json({ error: "Compte introuvable" }, 401, [cookie(PROFILE_COOKIE, "", 0)]);
 
-  if (!id && method === "GET") return json(publicProfile(profile));
+  if (!id && method === "GET") {
+    // Suivi d'activité pour le tableau de bord : dernière visite et appareil (au plus une écriture par heure)
+    const ua = req.headers.get("user-agent") || "";
+    const platform = /AgendaDCG-Mac|CFNetwork/.test(ua) ? "Mac" : /AgendaDCG-Windows/.test(ua) ? "Windows" : /iPhone|iPad/.test(ua) ? "iPhone" : /Android/.test(ua) ? "Android" : "Navigateur";
+    const last = Date.parse(profile.lastSeenAt || 0) || 0;
+    if (Date.now() - last > 3600e3 || !profile.platforms?.[platform]) {
+      profile.lastSeenAt = new Date().toISOString();
+      profile.platforms = { ...(profile.platforms || {}), [platform]: profile.lastSeenAt };
+      await profiles().setJSON(pid, profile);
+    }
+    return json(publicProfile(profile));
+  }
 
   const body = method === "GET" ? {} : await req.json().catch(() => ({}));
   if (id === "done" && method === "PUT") {
@@ -270,6 +282,11 @@ export default async (req) => {
   const url = new URL(req.url);
   const [resource, id] = url.pathname.replace(/^\/api\/?/, "").split("/").filter(Boolean);
   const method = req.method;
+
+  if (resource === "admin") return handleAdmin(req, url, id);
+  if ((resource === "schedule" || url.pathname === "/schedule.json") && method === "GET") {
+    return new Response(JSON.stringify(await readSchedule(url.origin)), { headers: { "content-type": "application/json", "cache-control": "no-cache" } });
+  }
 
   if (resource === "push-key" && method === "GET") {
     return json({ key: pushReady() ? Netlify.env.get("PUSH_PUBLIC_KEY") : null });

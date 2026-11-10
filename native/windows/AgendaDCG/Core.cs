@@ -184,6 +184,8 @@ public static class Api
     static Dictionary<string, string> cookies = Load();
     public static readonly HttpClient Http = new(new HttpClientHandler { UseCookies = false, AllowAutoRedirect = true }) { Timeout = TimeSpan.FromSeconds(60) };
 
+    static Api() { Http.DefaultRequestHeaders.UserAgent.ParseAdd($"AgendaDCG-Windows/{typeof(Api).Assembly.GetName().Version?.ToString(3) ?? "dev"}"); }
+
     static Dictionary<string, string> Load()
     {
         try { return JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(CookieFile)) ?? new(); } catch { return new(); }
