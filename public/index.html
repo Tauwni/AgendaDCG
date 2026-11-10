@@ -1894,7 +1894,7 @@ function slotRows(ch, { editable }) {
       return `<div class="file">
         <span class="ico">PDF</span>
         <a href="/api/files/${encodeURIComponent(f.key)}" target="_blank" rel="noopener"><div class="n">${label}</div><div class="m">${esc(f.name)} · ${size(f.size)} · ${esc(f.uploadedBy)}</div></a>
-        ${editable ? `<label class="mini" title="Remplacer">Remplacer<input type="file" accept="${ACCEPT}" multiple data-slot="${k}"></label>
+        ${f.locked ? `<span class="mini" title="PDF officiel, non supprimable">🔒</span>` : editable ? `<label class="mini" title="Remplacer">Remplacer<input type="file" accept="${ACCEPT}" multiple data-slot="${k}"></label>
         <button class="del" data-del="${k}" aria-label="Supprimer ${label}">${ICON.close}</button>` : ""}
       </div>`;
     }
@@ -1950,13 +1950,13 @@ function openChapter(id, back, backLabel) {
         <div class="label">Historique</div>
         <div class="group history">${hist.map((h) => `<div><b>${esc(h.by)}</b> ${esc(h.action)} · ${ago(h.at)}</div>`).join("")}</div>
       </div>
-      <button class="btn-row" data-act="delete">Supprimer le chapitre</button>
+      ${Object.values(c.files).some((f) => f?.locked) ? "" : `<button class="btn-row" data-act="delete">Supprimer le chapitre</button>`}
     </div>`);
 
   bd.querySelector("[data-act=back]").onclick = goBack;
   bd.querySelector("[data-act=edit]").onclick = () => openChapterEdit(c, { onCancel: () => openChapter(c.id, back, backLabel) });
   bd.querySelectorAll("[data-event]").forEach((b) => b.onclick = () => openDetail(b.dataset.event));
-  bd.querySelector("[data-act=delete]").onclick = async () => {
+  const delBtn = bd.querySelector("[data-act=delete]"); if (delBtn) delBtn.onclick = async () => {
     const warn = uses.length ? ` Il sera retiré de ${uses.length} éval${uses.length > 1 ? "s" : ""} ou exercice${uses.length > 1 ? "s" : ""}.` : "";
     if (!confirm(`Supprimer « ${c.title} » et ses PDF pour toute la classe ?${warn}`)) return;
     try {

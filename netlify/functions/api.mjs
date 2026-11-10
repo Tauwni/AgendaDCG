@@ -457,6 +457,7 @@ export default async (req) => {
     if (method === "DELETE") {
       const by = cleanName(url.searchParams.get("by"));
       if (!by) return json({ error: "Ton nom est obligatoire" }, 400);
+      if (Object.values(existing.files).some((f) => f?.locked)) return json({ error: "Ce chapitre contient des PDF officiels : il ne peut pas être supprimé" }, 403);
       await Promise.all(Object.values(existing.files).filter(Boolean).map((f) => deleteR2(f.key)));
       for (const ev of await listAll(events())) {
         if (!ev.chapters?.includes(id)) continue;
@@ -488,6 +489,7 @@ export default async (req) => {
       const ch = await chapters().get(String(body.chapter || ""), { type: "json" });
       if (!ch) return json({ error: "Chapitre introuvable" }, 404);
 
+      if (ch.files[body.slot]?.locked) return json({ error: "Ce PDF officiel ne peut pas être remplacé" }, 403);
       if (id === "start") {
         const size = Number(body.size) || 0;
         if (size <= 0) return json({ error: "Fichier vide" }, 400);
@@ -531,6 +533,7 @@ export default async (req) => {
       if (!(slot in SLOTS)) return json({ error: "Type de PDF inconnu" }, 400);
       const ch = await chapters().get(url.searchParams.get("chapter") || "", { type: "json" });
       if (!ch || ch.files[slot]?.key !== id) return json({ error: "PDF introuvable" }, 404);
+      if (ch.files[slot].locked) return json({ error: "Ce PDF officiel ne peut pas être supprimé" }, 403);
       await deleteR2(id);
       const updated = stamp({ ...ch, files: { ...ch.files, [slot]: null } }, by, `a supprimé ${SLOTS[slot]}`);
       await chapters().setJSON(ch.id, updated);
