@@ -641,7 +641,7 @@ function openClass(id) {
       </div>
       ${chs.length ? `<button class="btn-row blue" data-act="cours">Voir les cours de ${esc(c.subject.split(" · ")[0])} (${plural(chs.length, "chapitre")})</button>` : ""}
       <button class="btn-row" data-act="revise">Réviser avec Objectif DCG</button>
-      <div class="detail-sub">Cours fixe de l'emploi du temps : il revient chaque semaine.</div>
+      <div class="detail-sub">${c.revision ? "Créneau de révision conseillé : le matin pour la mémorisation, des séances de 1 h 30 à 2 h 30 avec pauses, et une reprise des cours de jeudi et vendredi dans les 48 h." : "Cours fixe de l'emploi du temps : il revient chaque semaine."}</div>
     </div>`);
   bd.querySelector("[data-act=close]").onclick = () => closeSheet();
   const go = bd.querySelector("[data-act=cours]");
@@ -658,7 +658,7 @@ function classesOn(key) {
   if (!inTerm(key)) return [];
   const wd = parse(key).getDay();
   return (state.schedule.classes || []).filter((c) => c.day === wd).map((c, i) => ({
-    id: `edt:${key}:${i}`, virtual: true, kind: "cours", title: c.title, subject: c.subject, date: key, time: c.start, end: c.end, color: c.color, chapters: [], history: [],
+    id: `edt:${key}:${i}`, virtual: true, kind: "cours", revision: c.kind === "revision", title: c.title, subject: c.subject, date: key, time: c.start, end: c.end, color: c.color, chapters: [], history: [],
   }));
 }
 const companyDay = (key) => inTerm(key) && (state.schedule.companyDays || []).includes(parse(key).getDay());
@@ -998,7 +998,7 @@ function weekHtml() {
   const days = [];
   for (let i = 0; i < 7; i++) {
     const key = iso(addDays(state.weekStart, i));
-    if (i < 5 || (map[key] || []).length) days.push(key);
+    if (i < 5 || (map[key] || []).length || classesOn(key).length) days.push(key);
   }
   const hours = Array.from({ length: TT_END - TT_START }, (_, i) => TT_START + i);
   const allDay = days.map((key) => {
@@ -2238,6 +2238,15 @@ function renderSettings() {
     </div>
 
     <div class="section">
+      <h2>Calendrier de ton téléphone</h2>
+      <div class="group" id="calBox">
+        <div class="hint">Abonne ton Calendrier iPhone, Mac ou Google Agenda : cours, révisions, devoirs et évals s'y affichent et se mettent à jour tout seuls (ceux que tu as cochés sont marqués ✓). Le lien est personnel, ne le partage pas.</div>
+        <a class="btn-row blue" id="calApple" href="#">Ajouter au Calendrier Apple</a>
+        <button class="btn-row" id="calCopy">Copier le lien (Google Agenda, Outlook…)</button>
+      </div>
+    </div>
+
+    <div class="section">
       <h2>Stockage des cours</h2>
       <div class="group usage" id="usageBox"><div class="usage-text">Chargement…</div></div>
     </div>
@@ -2245,6 +2254,14 @@ function renderSettings() {
     <div class="section">
       <button class="btn-row" data-act="logout">Se déconnecter</button>
     </div>`;
+
+  api("calendar-link").then(({ url }) => {
+    $("#calApple").href = url.replace(/^https?:/, "webcal:");
+    $("#calCopy").onclick = async () => {
+      try { await navigator.clipboard.writeText(url); toast("Lien copié : dans Google Agenda, « Autres agendas › À partir de l'URL »"); }
+      catch { prompt("Copie ce lien :", url); }
+    };
+  }).catch(() => { $("#calBox").innerHTML = `<div class="hint">Lien indisponible pour le moment.</div>`; });
 
   const savePrefs = async (next) => {
     try { state.profile = await send("profile/prefs", "PUT", { prefs: next }); }
@@ -2259,6 +2276,7 @@ function renderSettings() {
     savePrefs({ ...state.profile.prefs, before: [...set] });
   });
   page.querySelector("[data-act=logout]").onclick = async () => {
+    try { await Promise.all(["agenda-data-v1", "agenda-pdf-v1"].map((c) => caches.delete(c))); } catch {}
     if (!confirm("Te déconnecter de ton compte sur cet appareil ?")) return;
     await disablePush().catch(() => {});
     await api("profile/logout", { method: "POST" }).catch(() => {});

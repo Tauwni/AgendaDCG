@@ -50,6 +50,7 @@ function cleanSchedule(b) {
   const classes = (Array.isArray(b.classes) ? b.classes : []).slice(0, 40).map((c) => ({
     day: Number(c.day), start: String(c.start), end: String(c.end), subject: text(c.subject, 60), title: text(c.title, 60),
     color: COLORS.includes(c.color) ? c.color : "blue",
+    ...(c.kind === "revision" ? { kind: "revision" } : {}),
   }));
   for (const c of classes) {
     if (!(c.day >= 0 && c.day <= 6) || !isTime(c.start) || !isTime(c.end) || c.start >= c.end) return { error: "Créneau invalide (jour ou heures)" };

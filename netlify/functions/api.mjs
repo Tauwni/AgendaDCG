@@ -283,6 +283,45 @@ async function handleProfile(req, url, id, method) {
   return json(publicProfile(profile));
 }
 
+/* ---------- Flux iCalendar ---------- */
+const calendarKey = (pid) => createHmac("sha256", profileSecret()).update(`ics:${pid}`).digest("hex").slice(0, 32);
+const icsText = (s) => String(s || "").replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/([,;])/g, "\\$1");
+const icsDt = (date, time) => date.replace(/-/g, "") + (time ? "T" + time.replace(":", "") + "00" : "");
+const addMin = (time, m) => { const [h, mm] = time.split(":").map(Number); const t = Math.min(h * 60 + mm + m, 23 * 60 + 59); return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`; };
+const nextDay = (date) => new Date(Date.parse(date + "T12:00Z") + 864e5).toISOString().slice(0, 10);
+
+async function buildIcs(p, origin) {
+  const [evs, sched] = await Promise.all([listAll(events()), readSchedule(origin)]);
+  const done = new Set(p.done || []);
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z";
+  const out = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Agenda DCG//FR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+    "X-WR-CALNAME:Agenda DCG", "X-WR-TIMEZONE:Europe/Paris", "REFRESH-INTERVAL;VALUE=DURATION:PT1H", "X-PUBLISHED-TTL:PT1H"];
+  const vevent = (uid, date, time, end, summary, desc) => {
+    out.push("BEGIN:VEVENT", `UID:${uid}@agendadcg`, `DTSTAMP:${stamp}`);
+    if (time) out.push(`DTSTART;TZID=Europe/Paris:${icsDt(date, time)}`, `DTEND;TZID=Europe/Paris:${icsDt(date, end || addMin(time, 60))}`);
+    else out.push(`DTSTART;VALUE=DATE:${icsDt(date)}`, `DTEND;VALUE=DATE:${icsDt(nextDay(date))}`);
+    out.push(`SUMMARY:${icsText(summary)}`);
+    if (desc) out.push(`DESCRIPTION:${icsText(desc)}`);
+    out.push("END:VEVENT");
+  };
+  // Cours et créneaux de révision : 4 semaines en arrière, 26 en avant
+  const skip = new Set(sched.skip || []);
+  for (let i = -28; i < 182; i++) {
+    const date = new Date(Date.now() + i * 864e5).toISOString().slice(0, 10);
+    if ((sched.from && date < sched.from) || (sched.to && date > sched.to) || skip.has(date)) continue;
+    const wd = new Date(date + "T12:00Z").getUTCDay();
+    (sched.classes || []).forEach((c, n) => { if (c.day === wd) vevent(`edt-${date}-${n}`, date, c.start, c.end, c.title, c.subject); });
+  }
+  for (const e of evs) {
+    if (!e.date) continue;
+    const label = KINDS[e.kind || "eval"]?.label || "";
+    const summary = `${done.has(e.id) ? "✓ " : ""}${label && e.kind !== "cours" ? label + " · " : ""}${e.title}`;
+    vevent(e.id, e.date, e.time, e.end, summary, [e.subject, e.notes || e.description].filter(Boolean).join("\n"));
+  }
+  out.push("END:VCALENDAR");
+  return out.map((l) => l.length > 74 ? l.match(/.{1,74}/gu).join("\r\n ") : l).join("\r\n") + "\r\n";
+}
+
 export default async (req) => {
   const url = new URL(req.url);
   const [resource, id] = url.pathname.replace(/^\/api\/?/, "").split("/").filter(Boolean);
@@ -305,7 +344,23 @@ export default async (req) => {
     return json({ ok: true }, 200, [cookie(COOKIE, "", 0), cookie(PROFILE_COOKIE, "", 0)]);
   }
 
+  // Abonnement calendrier (Apple / Google) : lien perso signé, lisible sans cookie
+  if (resource === "calendar" && method === "GET" && id) {
+    const [pid, k] = id.replace(/\.ics$/, "").split(".");
+    if (!pid || !k || !safeEqual(k, calendarKey(pid))) return new Response("Lien invalide", { status: 403 });
+    const p = await profiles().get(pid, { type: "json" });
+    if (!p) return new Response("Compte introuvable", { status: 404 });
+    return new Response(await buildIcs(p, url.origin), { headers: { "content-type": "text/calendar; charset=utf-8", "cache-control": "no-cache" } });
+  }
+
   if (!isAuthed(req)) return json({ error: "Non connecté" }, 401);
+
+  if (resource === "calendar-link" && method === "GET") {
+    const pid = currentProfileId(req);
+    if (!pid) return json({ error: "Non connecté" }, 401);
+    return json({ url: `${url.origin}/api/calendar/${pid}.${calendarKey(pid)}.ics` });
+  }
+
 
   if (resource === "me") return json({ ok: true });
 
