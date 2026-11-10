@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Agenda DCG · L'agenda de ta classe de DCG</title>
+<meta name="description" content="Évaluations, devoirs, cours en PDF, notes et rappels : toute l'organisation de ta classe de DCG dans une seule appli, sur iPhone, Mac, Windows et le web.">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="Agenda DCG">
+<meta property="og:description" content="L'agenda de ta classe de DCG : évaluations, cours, notes et rappels.">
+<meta property="og:image" content="/icons/icon-512.png">
+<link rel="icon" type="image/png" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<style>
+:root {
+  --bg: #ffffff; --bg2: #f5f5f7; --card: #ffffff; --text: #1d1d1f; --text2: #6e6e73; --line: #e5e5ea;
+  --accent: #ff3b30; --accent-soft: #fff1f0; --blue: #0071e3; --green: #28a745;
+  --shadow: 0 30px 60px -30px rgba(0,0,0,.28), 0 18px 36px -18px rgba(0,0,0,.18);
+  --radius: 22px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000; --bg2: #101012; --card: #1c1c1e; --text: #f5f5f7; --text2: #a1a1a6; --line: #2c2c2e;
+    --accent: #ff453a; --accent-soft: #2a0f0d; --blue: #2997ff; --green: #30d158;
+    --shadow: 0 30px 60px -30px rgba(0,0,0,.9), 0 18px 36px -18px rgba(0,0,0,.7);
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif; font-size: 17px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+img { display: block; max-width: 100%; height: auto; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+.wrap { width: min(1120px, 100% - 40px); margin: 0 auto; }
+.eyebrow { font-size: 14px; font-weight: 600; letter-spacing: .02em; color: var(--accent); text-transform: uppercase; }
+h1, h2, h3 { letter-spacing: -.025em; line-height: 1.07; margin: 0; }
+h1 { font-size: clamp(42px, 7.2vw, 84px); font-weight: 800; }
+h2 { font-size: clamp(32px, 4.6vw, 54px); font-weight: 800; }
+h3 { font-size: 21px; font-weight: 700; letter-spacing: -.01em; line-height: 1.2; }
+.lead { font-size: clamp(19px, 2.2vw, 23px); color: var(--text2); line-height: 1.45; letter-spacing: -.005em; }
+.accent { color: var(--accent); }
+
+/* Nav */
+.nav { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: .5px solid var(--line); }
+.nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 56px; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; }
+.brand img { width: 30px; height: 30px; border-radius: 7px; box-shadow: 0 0 0 .5px rgba(0,0,0,.12); }
+.nav-links { display: flex; align-items: center; gap: 26px; font-size: 14px; color: var(--text2); }
+.nav-links a:hover { color: var(--text); }
+@media (max-width: 760px) { .nav-links a:not(.btn) { display: none; } }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px; padding: 0 22px; border-radius: 999px; font-weight: 600; font-size: 16px; transition: transform .25s cubic-bezier(.32,.72,0,1), background-color .2s, opacity .2s; white-space: nowrap; }
+.btn:active { transform: scale(.97); }
+.btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { opacity: .9; }
+.btn-dark { background: var(--text); color: var(--bg); }
+.btn-dark:hover { opacity: .88; }
+.btn-ghost { background: var(--bg2); color: var(--text); }
+.btn-ghost:hover { background: var(--line); }
+.btn-sm { height: 34px; padding: 0 16px; font-size: 14px; }
+.link-arrow { color: var(--blue); font-weight: 500; display: inline-flex; align-items: center; gap: 4px; }
+.link-arrow:hover { text-decoration: underline; }
+
+/* Hero */
+.hero { position: relative; overflow: hidden; padding: clamp(56px, 9vw, 110px) 0 0; text-align: center; }
+.hero::before { content: ""; position: absolute; inset: -20% -10% auto; height: 820px; background: radial-gradient(600px 380px at 50% 30%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%); pointer-events: none; }
+.hero .wrap { position: relative; }
+.hero-icon { width: 92px; height: 92px; margin: 0 auto 26px; border-radius: 22px; box-shadow: 0 18px 40px -16px rgba(255,59,48,.55), 0 0 0 .5px rgba(0,0,0,.08); }
+.hero h1 { max-width: 13ch; margin: 14px auto 0; }
+.hero .lead { max-width: 640px; margin: 22px auto 0; }
+.cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 34px; }
+.cta-note { margin-top: 14px; font-size: 14px; color: var(--text2); }
+.stage { position: relative; margin: clamp(48px, 7vw, 80px) auto 0; width: min(1120px, 100%); aspect-ratio: 16 / 10.2; }
+.stage .laptop { position: absolute; left: 2%; right: 12%; top: 0; }
+.stage .phone { position: absolute; right: 2%; bottom: 0; width: 25%; }
+
+/* Device frames */
+.window { border-radius: 14px; overflow: hidden; background: #1c1c1e; box-shadow: var(--shadow), 0 0 0 1px rgba(255,255,255,.08); }
+.window .bar { height: 30px; background: #2c2c2e; display: flex; align-items: center; gap: 8px; padding: 0 13px; border-bottom: 1px solid #000; }
+.window .bar i { width: 12px; height: 12px; border-radius: 50%; }
+.window .bar i:nth-child(1) { background: #ff5f57; } .window .bar i:nth-child(2) { background: #febc2e; } .window .bar i:nth-child(3) { background: #28c840; }
+.phone { position: relative; border-radius: 17% / 8%; padding: 3.4%; background: #1d1d1f; box-shadow: var(--shadow), inset 0 0 0 2px #3a3a3c; }
+.phone .screen { position: relative; border-radius: 13.5% / 6.4%; overflow: hidden; background: #fff; padding-top: 11%; }
+.phone .screen img { width: 100%; height: auto; }
+@media (prefers-color-scheme: dark) { .phone .screen.adaptive { background: #000; } }
+.phone .island { position: absolute; top: 1.6%; left: 50%; transform: translateX(-50%); width: 30%; height: 3.2%; border-radius: 20px; background: #000; z-index: 2; }
+
+/* Stats */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border-radius: var(--radius); overflow: hidden; margin: clamp(80px, 10vw, 120px) auto 0; }
+.stat { background: var(--bg2); padding: 26px 20px; text-align: center; }
+.stat b { display: block; font-size: clamp(30px, 4vw, 44px); font-weight: 800; letter-spacing: -.03em; }
+.stat span { color: var(--text2); font-size: 15px; }
+@media (max-width: 700px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+
+/* Feature rows */
+section { scroll-margin-top: 70px; }
+.features { padding: clamp(90px, 11vw, 140px) 0 0; }
+.section-head { text-align: center; max-width: 760px; margin: 0 auto; }
+.section-head h2 { margin-top: 12px; }
+.section-head .lead { margin-top: 18px; }
+.row { display: grid; grid-template-columns: 1.05fr .95fr; gap: clamp(32px, 6vw, 90px); align-items: center; margin-top: clamp(70px, 9vw, 120px); }
+.row.flip .text { order: 2; }
+.row .media { display: flex; justify-content: center; gap: 18px; }
+.row .media .phone { width: min(300px, 46%); }
+.row .media .phone + .phone { margin-top: 70px; }
+.row .text h3 { font-size: clamp(28px, 3.4vw, 40px); font-weight: 800; letter-spacing: -.025em; line-height: 1.1; margin-top: 10px; }
+.row .text p { color: var(--text2); font-size: 18px; margin: 18px 0 0; }
+.bullets { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 12px; }
+.bullets li { display: flex; gap: 12px; align-items: flex-start; font-size: 16px; }
+.bullets svg { width: 22px; height: 22px; flex-shrink: 0; color: var(--accent); margin-top: 1px; }
+@media (max-width: 860px) {
+  .row { grid-template-columns: 1fr; text-align: left; }
+  .row .text, .row.flip .text { order: 1; }
+  .row .media { order: 2; }
+  .row .media .phone { width: min(260px, 46%); }
+}
+
+/* Grid of small features */
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: clamp(70px, 9vw, 110px); }
+.tile { background: var(--bg2); border-radius: var(--radius); padding: 26px; }
+.tile .ico { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.tile .ico svg { width: 24px; height: 24px; }
+.tile h3 { margin-top: 18px; }
+.tile p { color: var(--text2); font-size: 15.5px; margin: 8px 0 0; }
+@media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
+
+/* Desktop showcase */
+.showcase { padding: clamp(100px, 12vw, 150px) 0 0; }
+.showcase .window { margin-top: 50px; }
+
+/* Install */
+.install { padding: clamp(100px, 12vw, 150px) 0 0; }
+.agent { margin-top: 48px; border-radius: 28px; padding: clamp(22px, 4vw, 40px); background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 14%, var(--bg2)), var(--bg2) 55%); border: .5px solid var(--line); }
+.agent-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+.agent-head h3 { font-size: clamp(24px, 2.8vw, 30px); font-weight: 800; letter-spacing: -.02em; }
+.agent-head p { color: var(--text2); margin: 8px 0 0; max-width: 560px; }
+.agents { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.agents span { font-size: 13px; font-weight: 600; padding: 5px 11px; border-radius: 999px; background: var(--card); border: .5px solid var(--line); color: var(--text2); }
+.prompt { position: relative; margin-top: 26px; border-radius: 18px; background: #0b0b0d; color: #f5f5f7; box-shadow: var(--shadow); overflow: hidden; }
+.prompt-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 12px 20px; border-bottom: 1px solid #222; }
+.prompt-bar > span { font-size: 13px; color: #8e8e93; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.prompt-bar > span::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #30d158; box-shadow: 0 0 10px #30d158; }
+.copy { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px; border-radius: 999px; background: #fff; color: #000; font-size: 14px; font-weight: 600; transition: transform .25s cubic-bezier(.32,.72,0,1), background-color .2s; }
+.copy:active { transform: scale(.95); }
+.copy.done { background: #30d158; color: #000; }
+.copy svg { width: 15px; height: 15px; }
+.prompt pre { margin: 0; padding: 22px 22px 26px; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 15px; line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
+.prompt pre b { color: #ff9f0a; font-weight: 600; }
+.agent-foot { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 22px; }
+.agent-foot div { font-size: 14.5px; color: var(--text2); display: flex; gap: 10px; }
+.agent-foot b { color: var(--text); display: block; }
+.agent-foot i { font-style: normal; width: 26px; height: 26px; border-radius: 50%; background: var(--card); border: .5px solid var(--line); display: grid; place-items: center; font-size: 13px; font-weight: 700; color: var(--text); flex-shrink: 0; }
+@media (max-width: 760px) { .agent-foot { grid-template-columns: 1fr; } }
+
+.platforms { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 22px; }
+.platform { background: var(--bg2); border-radius: var(--radius); padding: 24px; display: flex; flex-direction: column; gap: 10px; border: 1.5px solid transparent; transition: border-color .3s; }
+.platform.mine { border-color: var(--accent); }
+.platform .badge-mine { display: none; align-self: flex-start; font-size: 12px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 3px 9px; border-radius: 999px; }
+.platform.mine .badge-mine { display: inline-block; }
+.platform svg.logo { width: 30px; height: 30px; }
+.platform p { color: var(--text2); font-size: 14.5px; margin: 0; flex: 1; }
+.platform ol { color: var(--text2); font-size: 14.5px; margin: 0; padding-left: 18px; flex: 1; }
+.platform .btn { align-self: flex-start; margin-top: 6px; }
+@media (max-width: 960px) { .platforms { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .platforms { grid-template-columns: 1fr; } }
+
+/* FAQ */
+.faq { padding: clamp(100px, 12vw, 150px) 0 0; }
+.faq-list { max-width: 820px; margin: 44px auto 0; border-top: .5px solid var(--line); }
+details { border-bottom: .5px solid var(--line); }
+summary { list-style: none; cursor: pointer; padding: 22px 4px; font-size: 19px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: "+"; font-size: 26px; font-weight: 300; color: var(--text2); transition: transform .3s cubic-bezier(.32,.72,0,1); }
+details[open] summary::after { transform: rotate(45deg); }
+details p { margin: -6px 4px 22px; color: var(--text2); font-size: 16.5px; }
+
+/* Final CTA + footer */
+.final { margin: clamp(100px, 12vw, 150px) auto 0; text-align: center; padding: clamp(50px, 8vw, 80px) 24px; border-radius: 32px; background: var(--bg2); position: relative; overflow: hidden; }
+.final::before { content: ""; position: absolute; inset: auto -20% -60%; height: 400px; background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 22%, transparent), transparent); }
+.final > * { position: relative; }
+.final img { width: 76px; height: 76px; border-radius: 18px; margin: 0 auto 22px; }
+footer { padding: 50px 0 calc(40px + env(safe-area-inset-bottom)); color: var(--text2); font-size: 13.5px; }
+footer .wrap { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; border-top: .5px solid var(--line); padding-top: 24px; }
+footer a:hover { color: var(--text); }
+
+/* Reveal on scroll */
+.reveal { opacity: 0; transform: translateY(28px); transition: opacity .9s cubic-bezier(.22,.61,.36,1), transform .9s cubic-bezier(.22,.61,.36,1); }
+.reveal.in { opacity: 1; transform: none; }
+.reveal.d1 { transition-delay: .08s; } .reveal.d2 { transition-delay: .16s; } .reveal.d3 { transition-delay: .24s; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal { opacity: 1; transform: none; transition: none; }
+}
+.theme-dark-only { display: none; }
+@media (prefers-color-scheme: dark) { .theme-dark-only { display: block; } .theme-light-only { display: none; } }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="/icons/icon-192.png" alt="">Agenda DCG</a>
+    <div class="nav-links">
+      <a href="#fonctionnalites">Fonctionnalités</a>
+      <a href="#installer">Installer</a>
+      <a href="#questions">Questions</a>
+      <a class="btn btn-primary btn-sm" href="/">Ouvrir l'agenda</a>
+    </div>
+  </div>
+</nav>
+
+<main id="top">
+  <header class="hero">
+    <div class="wrap">
+      <img class="hero-icon reveal" src="/icons/icon-512.png" alt="Icône Agenda DCG">
+      <div class="eyebrow reveal d1">Pour les étudiants en DCG</div>
+      <h1 class="reveal d1">Toute ta classe, <span class="accent">un seul agenda.</span></h1>
+      <p class="lead reveal d2">Évaluations, devoirs, cours en PDF, notes et rappels. Ce que tu dois faire aujourd'hui, ce qui arrive cette semaine et où tu en es, sur ton iPhone, ton Mac ou ton PC.</p>
+      <div class="cta reveal d3">
+        <a class="btn btn-primary" id="heroDownload" href="#installer">Installer l'appli</a>
+        <a class="btn btn-ghost" href="#agent">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>
+          Installer avec mon agent IA
+        </a>
+      </div>
+      <p class="cta-note reveal d3">Gratuit · iPhone, Mac, Windows et web · synchronisé partout</p>
+    </div>
+    <div class="stage reveal d2">
+      <div class="window laptop">
+        <div class="bar"><i></i><i></i><i></i></div>
+        <img src="/presentation/desktop-week-dark.jpg" alt="Agenda DCG sur Mac : la semaine avec cours, devoirs, évaluation et examen blanc" width="2000" height="1250">
+      </div>
+      <div class="phone">
+        <div class="screen"><div class="island"></div><img src="/presentation/phone-today.jpg" alt="Agenda DCG sur iPhone : l'écran Aujourd'hui" width="780" height="1688"></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="stats reveal">
+      <div class="stat"><b>5</b><span>onglets, rien de plus</span></div>
+      <div class="stat"><b>46</b><span>PDF de cours déjà en ligne</span></div>
+      <div class="stat"><b>4</b><span>plateformes : iPhone, Mac, Windows, web</span></div>
+      <div class="stat"><b>0 €</b><span>pour toujours</span></div>
+    </div>
+  </div>
+
+  <section class="features" id="fonctionnalites">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow reveal">Fonctionnalités</div>
+        <h2 class="reveal d1">Pensé pour l'alternance.</h2>
+        <p class="lead reveal d2">Entre les jours en entreprise et les jours de cours, le temps file. Agenda DCG te dit quoi faire, et quand.</p>
+      </div>
+
+      <div class="row">
+        <div class="text reveal">
+          <div class="eyebrow">Aujourd'hui</div>
+          <h3>Tu ouvres, tu sais quoi faire.</h3>
+          <p>Le programme du jour, ce qui est en retard et les prochaines échéances avec un compte à rebours. Tu coches au fur et à mesure.</p>
+          <ul class="bullets">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.8"/></svg>Statut fait / à faire, personnel à chacun</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.8"/></svg>« Demain », « J-4 » : les échéances d'un coup d'œil</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.8"/></svg>Ce qui est en retard ne passe pas à la trappe</li>
+          </ul>
+        </div>
+        <div class="media reveal d1">
+          <div class="phone"><div class="screen adaptive"><div class="island"></div><img class="theme-light-only" src="/presentation/phone-today.jpg" alt="Écran Aujourd'hui" loading="lazy" width="780" height="1688"><img class="theme-dark-only" src="/presentation/phone-today-dark.jpg" alt="Écran Aujourd'hui en mode sombre" loading="lazy" width="780" height="1688"></div></div>
+        </div>
+      </div>
+
+      <div class="row flip">
+        <div class="media reveal">
+          <div class="phone"><div class="screen adaptive"><div class="island"></div><img class="theme-light-only" src="/presentation/phone-week.jpg" alt="Vue semaine" loading="lazy" width="780" height="1688"><img class="theme-dark-only" src="/presentation/phone-week-dark.jpg" alt="Vue semaine en mode sombre" loading="lazy" width="780" height="1688"></div></div>
+        </div>
+        <div class="text reveal d1">
+          <div class="eyebrow">Agenda</div>
+          <h3>Du mois à la semaine, d'un geste.</h3>
+          <p>Pince l'écran pour passer de la vue mois à la vue semaine, glisse pour avancer, touche le nom du mois pour sauter directement où tu veux. Comme le Calendrier de ton iPhone.</p>
+          <ul class="bullets">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.8"/></svg>Évaluation, examen blanc, devoir, exercice, cours, révision</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.8"/></svg>Jours fériés indiqués automatiquement</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.8"/></svg>Sur Mac, glisse à deux doigts sur le trackpad</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="text reveal">
+          <div class="eyebrow">Cours</div>
+          <h3>Tous les cours, rangés pour toi.</h3>
+          <p>Une bibliothèque par matière et par chapitre. Chaque chapitre a sa fiche de cours, son sujet type, le corrigé et le TOP EXO du prof. Une évaluation renvoie directement aux bons chapitres.</p>
+          <ul class="bullets">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.8"/></svg>PDF compressés automatiquement, texte toujours sélectionnable</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.8"/></svg>Une photo du tableau devient un PDF</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.8"/></svg>Un seul étudiant ajoute, toute la classe en profite</li>
+          </ul>
+        </div>
+        <div class="media reveal d1">
+          <div class="phone"><div class="screen"><div class="island"></div><img src="/presentation/phone-chapter.jpg" alt="Un chapitre avec sa fiche, son sujet, son corrigé et son TOP EXO" loading="lazy" width="780" height="1688"></div></div>
+        </div>
+      </div>
+
+      <div class="row flip">
+        <div class="media reveal">
+          <div class="phone"><div class="screen"><div class="island"></div><img src="/presentation/phone-subject.jpg" alt="Notes d'une matière avec graphique et simulateur" loading="lazy" width="780" height="1688"></div></div>
+        </div>
+        <div class="text reveal d1">
+          <div class="eyebrow">Notes</div>
+          <h3>Sais où tu en es, matière par matière.</h3>
+          <p>Ton carnet de notes privé : moyennes par matière, graphique d'évolution et un simulateur qui te dit quelle note viser au prochain contrôle.</p>
+          <ul class="bullets">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.8"/></svg>Coefficients, barèmes sur 10, 20 ou 40</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.8"/></svg>Les entraînements à part, hors moyenne</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.8"/></svg>Protégé par ton code perso : personne d'autre ne les voit</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="text reveal">
+          <div class="eyebrow">Rappels</div>
+          <h3>Plus jamais « c'était pour aujourd'hui ? »</h3>
+          <p>Tu choisis tes notifications : à chaque nouvelle évaluation, chaque matin, chaque dimanche pour ta semaine, et des rappels 1 jour, 2 jours ou 1 semaine avant.</p>
+        </div>
+        <div class="media reveal d1">
+          <div class="phone"><div class="screen"><div class="island"></div><img src="/presentation/phone-settings.jpg" alt="Réglages des notifications" loading="lazy" width="780" height="1688"></div></div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="tile reveal"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5a8 8 0 10-2.3 5.6"/><path d="M20 5v6.5h-6.5"/></svg></div><h3>Synchronisé partout</h3><p>Ce que tu ajoutes sur ton iPhone apparaît tout de suite sur ton Mac, et chez toute la classe.</p></div>
+        <div class="tile reveal d1"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9.5" rx="2.5"/><path d="M8 11V8a4 4 0 018 0v3"/></svg></div><h3>Privé là où il faut</h3><p>L'agenda et les cours sont partagés. Tes notes et ce que tu as fait restent à toi.</p></div>
+        <div class="tile reveal d2"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 100 18 6 6 0 010-12 3 3 0 000-6z"/></svg></div><h3>Clair et sombre</h3><p>L'interface suit le thème de ton appareil, avec les animations fluides d'iOS et de macOS.</p></div>
+        <div class="tile reveal"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h7"/><path d="M17 14l3 3-3 3"/></svg></div><h3>PDF jusqu'à 100 Mo</h3><p>Les scans lourds sont allégés avant l'envoi : un PDF de 20 Mo passe souvent sous les 3 Mo.</p></div>
+        <div class="tile reveal d1"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></div><h3>Gratuit, vraiment</h3><p>L'appli bloque d'elle-même avant de dépasser les forfaits gratuits. Aucune facture possible.</p></div>
+        <div class="tile reveal d2"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><h3>Historique</h3><p>Chaque ajout ou modification affiche le prénom de son auteur.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="showcase">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow reveal">Sur ordinateur</div>
+        <h2 class="reveal d1">Tout ton mois, en grand.</h2>
+        <p class="lead reveal d2">Une vraie app pour Mac et Windows, qui reste toujours à jour avec le site.</p>
+      </div>
+      <div class="window reveal d2">
+        <div class="bar"><i></i><i></i><i></i></div>
+        <img src="/presentation/desktop-month-light.jpg" alt="Agenda DCG sur ordinateur : vue du mois" loading="lazy" width="2000" height="1250">
+      </div>
+    </div>
+  </section>
+
+  <section class="install" id="installer">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow reveal">Installer</div>
+        <h2 class="reveal d1">Prêt en une minute.</h2>
+        <p class="lead reveal d2">Laisse ton agent IA tout faire, ou installe l'appli toi-même.</p>
+      </div>
+
+      <div class="agent reveal" id="agent">
+        <div class="agent-head">
+          <div>
+            <h3>Installe-la avec ton agent IA</h3>
+            <p>Copie ce prompt et colle-le dans ton agent. Il télécharge la dernière version, l'installe et l'ouvre pour toi.</p>
+            <div class="agents"><span>Claude Code</span><span>Codex</span><span>Cursor</span><span>Gemini CLI</span><span>Tout agent qui peut lancer des commandes</span></div>
+          </div>
+        </div>
+        <div class="prompt">
+          <div class="prompt-bar"><span>Prompt d'installation</span><button class="copy" id="copyPrompt" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></svg><span class="copy-label">Copier</span></button></div>
+<pre id="promptText">Installe l'application <b>Agenda DCG</b> sur cet ordinateur.
+
+Télécharge la dernière version depuis https://github.com/Tauwni/AgendaDCG/releases/latest
+- Sur Mac : prends Agenda-DCG-Mac.dmg, copie « Agenda DCG » dans le dossier Applications, retire l'attribut de quarantaine de l'app (elle n'est pas signée par Apple), puis ouvre-la.
+- Sur Windows : prends Agenda-DCG-Windows-Setup.exe, lance l'installation, puis ouvre l'app.
+
+Dis-moi quand c'est fait.</pre>
+        </div>
+        <div class="agent-foot">
+          <div><i>1</i><span><b>Copie le prompt</b>Avec le bouton ci-dessus.</span></div>
+          <div><i>2</i><span><b>Colle-le dans ton agent</b>Il peut te demander d'autoriser les commandes.</span></div>
+          <div><i>3</i><span><b>Connecte-toi</b>Ton prénom, le mot de passe de la classe, et ton code perso.</span></div>
+        </div>
+      </div>
+
+      <div class="platforms">
+        <div class="platform reveal" data-os="mac">
+          <span class="badge-mine">Ton appareil</span>
+          <svg class="logo" viewBox="0 0 24 24" fill="currentColor"><path d="M16.4 12.6c0-2.4 2-3.6 2.1-3.6-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.8-3.2-.8-1.6 0-3.1 1-4 2.4-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.1-1.2 2.9-2.4.9-1.3 1.3-2.6 1.3-2.7 0 0-2.5-1-2.5-4.1zM14 5.5c.7-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1 .1 2.1-.6 2.8-1.4z"/></svg>
+          <h3>Mac</h3>
+          <p>Intel et Apple Silicon. Au premier lancement : Réglages Système → Confidentialité et sécurité → Ouvrir quand même.</p>
+          <a class="btn btn-dark btn-sm" href="https://github.com/Tauwni/AgendaDCG/releases/latest/download/Agenda-DCG-Mac.dmg">Télécharger le .dmg</a>
+        </div>
+        <div class="platform reveal d1" data-os="windows">
+          <span class="badge-mine">Ton appareil</span>
+          <svg class="logo" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.3l7.4-1v7.2H3zm0 13.4l7.4 1v-7.1H3zm8.2 1.1L21 21.2v-8.6h-9.8zm0-15.6v7.3H21V2.8z"/></svg>
+          <h3>Windows</h3>
+          <p>Windows 10 et 11. Si SmartScreen s'affiche : Informations complémentaires → Exécuter quand même.</p>
+          <a class="btn btn-dark btn-sm" href="https://github.com/Tauwni/AgendaDCG/releases/latest/download/Agenda-DCG-Windows-Setup.exe">Télécharger le .exe</a>
+        </div>
+        <div class="platform reveal d2" data-os="ios">
+          <span class="badge-mine">Ton appareil</span>
+          <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3"/></svg>
+          <h3>iPhone</h3>
+          <ol><li>Ouvre l'agenda dans Safari</li><li>Partager → Sur l'écran d'accueil</li><li>Ouvre-le depuis l'icône</li></ol>
+          <a class="btn btn-dark btn-sm" href="/">Ouvrir dans Safari</a>
+        </div>
+        <div class="platform reveal d3" data-os="web">
+          <span class="badge-mine">Ton appareil</span>
+          <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>
+          <h3>Navigateur</h3>
+          <p>Rien à installer, sur n'importe quel ordinateur ou téléphone Android.</p>
+          <a class="btn btn-dark btn-sm" href="/">Ouvrir l'agenda</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="faq" id="questions">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow reveal">Questions</div>
+        <h2 class="reveal d1">Bon à savoir.</h2>
+      </div>
+      <div class="faq-list reveal">
+        <details><summary>C'est vraiment gratuit ?</summary><p>Oui. L'agenda tourne sur les forfaits gratuits de Netlify et Cloudflare, et il bloque de lui-même les envois avant de les dépasser. Il n'y a aucune carte bancaire à donner et aucune facture possible.</p></details>
+        <details><summary>Qui peut voir mes notes ?</summary><p>Personne d'autre que toi. Tes notes, ce que tu as coché et tes réglages de rappels sont liés à ton compte, protégé par ton code perso à 6 chiffres. L'agenda et les cours, eux, sont partagés avec la classe.</p></details>
+        <details><summary>Où trouver le mot de passe de la classe ?</summary><p>Demande-le au délégué ou à un camarade. Il n'est écrit nulle part en ligne, pour que l'agenda reste réservé à la classe.</p></details>
+        <details><summary>macOS dit que l'app « ne peut pas être ouverte ». C'est grave ?</summary><p>Non : l'app n'est pas signée avec un certificat Apple payant. Va dans Réglages Système → Confidentialité et sécurité, puis clique sur « Ouvrir quand même ». Si tu passes par ton agent IA, il s'en occupe.</p></details>
+        <details><summary>Je reçois les rappels sur quels appareils ?</summary><p>Sur iPhone (après l'avoir ajouté à l'écran d'accueil), sur Android et dans Safari, Chrome ou Edge sur ordinateur. Les apps Mac et Windows ne reçoivent pas de notifications : active-les sur ton téléphone.</p></details>
+        <details><summary>Ça marche sans internet ?</summary><p>Non, l'agenda a besoin d'internet pour rester synchronisé avec toute la classe.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <div class="final reveal">
+      <img src="/icons/icon-512.png" alt="">
+      <h2>Ta semaine t'attend.</h2>
+      <p class="lead" style="margin-top:14px">Ouvre l'agenda, connecte-toi avec ton prénom, et c'est parti.</p>
+      <div class="cta"><a class="btn btn-primary" href="/">Ouvrir l'agenda</a><a class="btn btn-ghost" href="#installer">Installer l'appli</a></div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Agenda DCG · fait par et pour la classe de DCG</span>
+    <span><a href="https://github.com/Tauwni/AgendaDCG">Code source sur GitHub</a> · Licence MIT</span>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const ua = navigator.userAgent;
+  const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const os = ios ? "ios" : /Mac/.test(ua) ? "mac" : /Windows/.test(ua) ? "windows" : "web";
+  document.querySelector(`.platform[data-os="${os}"]`)?.classList.add("mine");
+  const hero = document.getElementById("heroDownload");
+  if (os === "mac") { hero.textContent = "Télécharger pour Mac"; hero.href = "https://github.com/Tauwni/AgendaDCG/releases/latest/download/Agenda-DCG-Mac.dmg"; }
+  else if (os === "windows") { hero.textContent = "Télécharger pour Windows"; hero.href = "https://github.com/Tauwni/AgendaDCG/releases/latest/download/Agenda-DCG-Windows-Setup.exe"; }
+  else { hero.textContent = "Ouvrir l'agenda"; hero.href = "/"; }
+
+  const btn = document.getElementById("copyPrompt");
+  const label = btn.querySelector(".copy-label");
+  btn.addEventListener("click", async () => {
+    const text = document.getElementById("promptText").innerText;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const r = document.createRange();
+      r.selectNodeContents(document.getElementById("promptText"));
+      const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      document.execCommand("copy");
+    }
+    btn.classList.add("done"); label.textContent = "Copié";
+    setTimeout(() => { btn.classList.remove("done"); label.textContent = "Copier"; }, 2200);
+  });
+
+  const items = document.querySelectorAll(".reveal");
+  if (!("IntersectionObserver" in window) || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    items.forEach((el) => el.classList.add("in"));
+    return;
+  }
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+  }, { rootMargin: "0px 0px -8% 0px", threshold: .08 });
+  items.forEach((el) => io.observe(el));
+})();
+</script>
+</body>
+</html>

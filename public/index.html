@@ -122,7 +122,8 @@ input, textarea { font: inherit; color: var(--text); }
 .ev .body { min-width: 0; flex: 1; }
 .ev .t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ev .s { font-size: 14px; color: var(--text2); }
-.ev .meta { display: flex; gap: 10px; align-items: center; margin-top: 4px; font-size: 13px; color: var(--text2); }
+.ev .meta { display: flex; flex-wrap: wrap; column-gap: 10px; row-gap: 2px; align-items: center; margin-top: 4px; font-size: 13px; color: var(--text2); }
+.ev .meta > span { white-space: nowrap; }
 .ev .meta svg { width: 13px; height: 13px; vertical-align: -2px; }
 .empty { color: var(--text2); padding: 22px 0; text-align: center; font-size: 15px; }
 .list.enter > * { animation: rise .42s cubic-bezier(.32,.72,0,1) backwards; animation-delay: calc(var(--i, 0) * 40ms); }
@@ -437,6 +438,7 @@ input, textarea { font: inherit; color: var(--text); }
     <button class="btn-primary" id="loginBtn">Continuer</button>
     <button type="button" class="link small hidden" id="loginBack">Ce n'est pas moi</button>
     <div class="error" id="loginErr"></div>
+    <a class="link small" href="/presentation" style="display:inline-block;margin-top:18px">Découvrir l'appli et l'installer</a>
   </form>
 </section>
 

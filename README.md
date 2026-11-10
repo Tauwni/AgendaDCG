@@ -125,6 +125,24 @@ Chacun choisit : à chaque nouvelle évaluation, chaque matin, chaque dimanche, 
 
 ## Installation
 
+**Page de présentation et téléchargements : [agenda-evals-0885.netlify.app/presentation](https://agenda-evals-0885.netlify.app/presentation)**
+
+### Avec un agent IA
+
+Colle ce prompt dans Claude Code, Codex, Cursor ou tout agent qui peut lancer des commandes :
+
+```text
+Installe l'application Agenda DCG sur cet ordinateur.
+
+Télécharge la dernière version depuis https://github.com/Tauwni/AgendaDCG/releases/latest
+- Sur Mac : prends Agenda-DCG-Mac.dmg, copie « Agenda DCG » dans le dossier Applications, retire l'attribut de quarantaine de l'app (elle n'est pas signée par Apple), puis ouvre-la.
+- Sur Windows : prends Agenda-DCG-Windows-Setup.exe, lance l'installation, puis ouvre l'app.
+
+Dis-moi quand c'est fait.
+```
+
+### À la main
+
 | Appareil | Comment faire |
 | --- | --- |
 | **Mac** | Télécharge [`Agenda-DCG-Mac.dmg`](https://github.com/Tauwni/AgendaDCG/releases/latest/download/Agenda-DCG-Mac.dmg), ouvre-le et glisse l'app dans **Applications**. |
