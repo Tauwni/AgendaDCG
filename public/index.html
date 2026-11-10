@@ -636,10 +636,10 @@ function openClass(id) {
     <div class="sheet-body">
       <div>
         <span class="kind-badge" style="--c:${col(c.color)}">${kindIcon("cours")}${c.revision ? "Révision · créneau conseillé" : "Cours · emploi du temps"}</span>
-        <h2 class="detail-title" style="--c:${col(c.color)}"><span class="bar"></span><span>${esc(c.title)}</span></h2>
+        <h2 class="detail-title" style="--c:${col(c.color)}"><span class="bar"></span><span>${esc(revTitle(c))}</span></h2>
         <div class="detail-sub">${esc(c.subject)} · ${longDate(key)} · ${esc(c.time)}–${esc(c.end)}</div>
       </div>
-      ${c.revision ? (hasLevels() ? `<div class="label">Au programme de ce créneau</div><div class="group">${revisionFor(c).map((p) => `<div class="set-row"><span><b>${esc(pickLabel(p))}</b><small>${esc(p.why)}</small></span></div>`).join("") || `<div class="hint">Rien de prioritaire : reprends librement un chapitre.</div>`}</div><button class="btn-row" data-act="levels">Modifier mon niveau par matière</button>`
+      ${c.revision ? (hasLevels() ? `<div class="label">Au programme de ce créneau</div>${revisionDetail(c)}<button class="btn-row" data-act="levels">Modifier mon niveau par matière</button>`
         : `<button class="btn-row blue" data-act="levels">Personnaliser mes révisions (1 min)</button>`) : ""}
       ${chs.length ? `<button class="btn-row blue" data-act="cours">Voir les cours de ${esc(c.subject.split(" · ")[0])} (${plural(chs.length, "chapitre")})</button>` : ""}
       <button class="btn-row" data-act="revise">Réviser avec Objectif DCG</button>
@@ -648,6 +648,7 @@ function openClass(id) {
   bd.querySelector("[data-act=close]").onclick = () => closeSheet();
   const go = bd.querySelector("[data-act=cours]");
   if (go) go.onclick = () => { closeSheet(); showTab("cours"); };
+  bd.querySelectorAll("[data-corr]").forEach((b) => b.onclick = () => { if (confirm("Tu es sûr de vouloir voir la correction ? Essaie d'abord de finir le sujet seul.")) window.open(`/api/files/${encodeURIComponent(b.dataset.corr)}`, "_blank", "noopener"); });
   const lv = bd.querySelector("[data-act=levels]");
   if (lv) lv.onclick = () => { closeSheet(); setTimeout(() => openLevels(() => openClass(id)), 250); };
   bd.querySelector("[data-act=revise]").onclick = () => window.open(REVISE_URL, "_blank", "noopener");
@@ -656,7 +657,7 @@ function openClass(id) {
 /* ---------- Révisions personnalisées (niveau 1–10 par matière) ---------- */
 const revSubjects = () => [...new Map((state.schedule?.classes || []).filter((c) => c.kind !== "revision").map((c) => [norm(c.subject), c.subject])).values()];
 const levelOf = (s) => { const l = state.profile?.levels || {}; const k = Object.keys(l).find((x) => sameSubject(x, s)); return k ? l[k] : null; };
-const hasLevels = () => !!state.profile?.levels && Object.keys(state.profile.levels).length > 0;
+const hasLevels = () => Object.keys(state.profile?.levels || {}).some((k) => k !== "__mode");
 const LEVEL_WORD = (n) => n <= 3 ? "à reprendre" : n <= 5 ? "fragile" : n <= 7 ? "correct" : "solide";
 /** Suggestions pour le week-end qui contient `key` : liste ordonnée, répartie sur les créneaux. */
 function revisionPicks(key) {
@@ -686,12 +687,48 @@ function revisionPicks(key) {
   }
   return items.sort((a, b) => b.score - a.score);
 }
+/* Deux méthodes (choisies dans « Mon niveau ») :
+   - "sujets" : le matin on révise 2 chapitres, en fin d'après-midi on fait les sujets de CES chapitres ;
+   - "revision" : chaque créneau révise ses propres chapitres, sans exercice. */
+const MODE_KEY = "__mode";
+const revMode = () => (state.profile?.levels || {})[MODE_KEY] === 2 ? "sujets" : (state.profile?.levels || {})[MODE_KEY] === 1 ? "revision" : advisedMode();
+/** Conseil : peu de bases (moyenne < 5) → d'abord réviser ; sinon s'entraîner sur sujets. */
+function advisedMode() {
+  const ls = revSubjects().map((s) => levelOf(s) ?? 5);
+  const avg = ls.length ? ls.reduce((a, b) => a + b, 0) / ls.length : 5;
+  return avg < 5 ? "revision" : "sujets";
+}
+function revSlot(c) { // position du créneau dans le week-end : jour (0 = samedi, 1 = dimanche) et moment (0 = matin, 1 = fin d'après-midi)
+  const d = parse(c.date), day = d.getDay() === 0 ? 1 : 0;
+  const same = classesOn(c.date).filter((x) => x.revision);
+  return { day, part: Math.max(0, same.findIndex((x) => x.id === c.id)) };
+}
+const isSujetSlot = (c) => c.revision && revMode() === "sujets" && revSlot(c).part === 1;
 function revisionFor(c) {
   if (!c.revision || !hasLevels()) return [];
-  const d = parse(c.date), sat = addDays(d, d.getDay() === 0 ? -1 : 6 - d.getDay());
-  const slots = [iso(sat), iso(addDays(sat, 1))].flatMap((k) => classesOn(k).filter((x) => x.revision));
-  const i = slots.findIndex((x) => x.id === c.id), per = 2;
-  return revisionPicks(c.date).slice(i * per, i * per + per);
+  let all = revisionPicks(c.date);
+  if (revMode() === "sujets") all = [...all.filter((p) => fileOf(p.chapter, "sujet")), ...all.filter((p) => !fileOf(p.chapter, "sujet"))];
+  const { day, part } = revSlot(c);
+  const block = revMode() === "sujets" ? day : day * 2 + part; // en mode sujets, matin et soir partagent les mêmes chapitres
+  return all.slice(block * 2, block * 2 + 2);
+}
+const revTitle = (c) => !c.revision ? c.title : isSujetSlot(c) ? "Sujets d'entraînement" : "Révision des chapitres";
+const fileOf = (ch, slot) => ch?.files?.[slot] || null;
+const fileLink = (f, label) => `<a class="nav-row" href="/api/files/${encodeURIComponent(f.key)}" target="_blank" rel="noopener"><span class="nav-body"><b>${esc(label)}</b><small>${esc(f.name)}</small></span>${ICON.chevron}</a>`;
+function revisionDetail(c) {
+  const picks = revisionFor(c);
+  const modeLine = `<div class="detail-sub" style="margin-bottom:8px">Ta méthode : <b>${revMode() === "sujets" ? "révision le matin, sujets le soir" : "révision seule"}</b>${revMode() === advisedMode() ? " (conseillée pour toi)" : ""}.</div>`;
+  if (!picks.length) return modeLine + `<div class="group"><div class="hint">Rien de prioritaire : reprends librement un chapitre.</div></div>`;
+  const list = (ps) => `<div class="group">${ps.map((p) => `<div class="set-row"><span><b>${esc(pickLabel(p))}</b><small>${esc(p.why)}</small></span></div>`).join("")}</div>`;
+  if (!isSujetSlot(c)) {
+    const after = revMode() === "sujets" ? " En fin d'après-midi, tu feras les sujets de ces chapitres." : "";
+    return modeLine + `<div class="detail-sub" style="margin-bottom:8px">Relis le cours, fais-toi une fiche et récite sans regarder.${after}</div>`
+      + picks.map((p) => `<div class="label">${esc(pickLabel(p))} · ${esc(p.why)}</div><div class="group">${fileOf(p.chapter, "cours") ? fileLink(fileOf(p.chapter, "cours"), "Fiche de cours") : `<div class="hint">Pas de fiche de cours en ligne : reprends ton cours.</div>`}</div>`).join("");
+  }
+  const withSujet = picks.filter((p) => fileOf(p.chapter, "sujet")), without = picks.filter((p) => !fileOf(p.chapter, "sujet"));
+  return modeLine + `<div class="detail-sub" style="margin-bottom:8px">Les sujets des chapitres révisés ce matin. Fais-les sans regarder la correction.</div>`
+    + withSujet.map((p) => `<div class="label">${esc(pickLabel(p))}</div><div class="group">${fileLink(fileOf(p.chapter, "sujet"), "Sujet")}${fileOf(p.chapter, "corrige") ? `<button class="btn-row" data-corr="${esc(fileOf(p.chapter, "corrige").key)}">Voir la correction</button>` : `<div class="hint">Pas de correction en ligne pour ce sujet.</div>`}</div>`).join("")
+    + (without.length ? `<div class="label" style="margin-top:12px">${withSujet.length ? "Pas de sujet pour l'autre chapitre." : "Pas de sujet en ligne pour ces chapitres."} Sinon voici des chapitres à réviser :</div>${list(without)}` : "");
 }
 const pickLabel = (p) => p.chapter ? `${p.subject.split(" · ")[0]} · ${p.chapter.title}` : `${p.subject.split(" · ")[0]} · reprendre le cours`;
 function openLevels(after) {
@@ -700,12 +737,27 @@ function openLevels(after) {
     <div class="sheet-head"><button class="link" data-act="close">Annuler</button><h3>Mon niveau</h3><button class="link" data-act="save"><b>Enregistrer</b></button></div>
     <div class="sheet-body">
       <div class="detail-sub">Note de 1 à 10 ton niveau dans chaque matière. Les créneaux de révision du week-end te proposeront plus souvent tes matières faibles, en plus des chapitres de tes prochaines évals. Personne d'autre ne voit tes réponses.</div>
+      <div class="label">Ma méthode de révision le week-end</div>
+      <div class="group">
+        <label class="set-row"><span><b>Révision le matin, sujets en fin d'après-midi</b><small>Tu révises 2 chapitres le matin puis tu fais leurs sujets (correction sur demande). Idéal quand les bases sont là ou qu'une éval approche.</small></span><input type="radio" name="revmode" value="2"></label>
+        <label class="set-row"><span><b>Révision seule</b><small>Chaque créneau révise ses propres chapitres, sans exercice. Idéal pour reconstruire les bases quand plusieurs matières sont fragiles.</small></span><input type="radio" name="revmode" value="1"></label>
+      </div>
+      <div class="detail-sub" data-advice></div>
+      <div class="label">Mon niveau par matière</div>
       ${subs.map((s, i) => { const v = levelOf(s) ?? 5; return `<div class="group" style="padding:12px 14px"><div style="display:flex;justify-content:space-between"><b>${esc(s)}</b><span data-out="${i}">${v}/10 · ${LEVEL_WORD(v)}</span></div><input type="range" min="1" max="10" step="1" value="${v}" data-lvl="${i}" style="width:100%;accent-color:var(--accent)"></div>`; }).join("")}
     </div>`);
-  bd.querySelectorAll("[data-lvl]").forEach((r) => r.oninput = () => { bd.querySelector(`[data-out="${r.dataset.lvl}"]`).textContent = `${r.value}/10 · ${LEVEL_WORD(Number(r.value))}`; });
+  const advise = () => {
+    const vals = [...bd.querySelectorAll("[data-lvl]")].map((r) => Number(r.value)), avg = vals.reduce((a, b) => a + b, 0) / (vals.length || 1);
+    bd.querySelector("[data-advice]").textContent = avg < 5 ? "Conseil pour toi : la révision seule, le temps de consolider tes bases (moyenne de tes niveaux sous 5/10)." : "Conseil pour toi : révision le matin et sujets le soir, pour t'entraîner comme le jour de l'éval.";
+  };
+  const cur = (state.profile?.levels || {})[MODE_KEY] || (advisedMode() === "sujets" ? 2 : 1);
+  bd.querySelector(`[name=revmode][value="${cur}"]`).checked = true;
+  advise();
+  bd.querySelectorAll("[data-lvl]").forEach((r) => r.oninput = () => { bd.querySelector(`[data-out="${r.dataset.lvl}"]`).textContent = `${r.value}/10 · ${LEVEL_WORD(Number(r.value))}`; advise(); });
   bd.querySelector("[data-act=close]").onclick = () => closeSheet();
   bd.querySelector("[data-act=save]").onclick = async () => {
     const levels = {}; bd.querySelectorAll("[data-lvl]").forEach((r) => levels[subs[r.dataset.lvl]] = Number(r.value));
+    levels[MODE_KEY] = Number(bd.querySelector("[name=revmode]:checked")?.value || 2);
     try { state.profile = await send("profile/levels", "PUT", { levels }); closeSheet(); toast("Révisions personnalisées ✓"); renderAll(); after?.(); }
     catch (err) { toast(err.message); }
   };
@@ -1081,8 +1133,8 @@ function weekHtml() {
     const blocks = timed.map(({ e, a, b, lane }) => {
       const top = ((a - TT_START * 60) / 60) * 100 / (TT_END - TT_START), h = ((b - a) / 60) * 100 / (TT_END - TT_START);
       return `<button class="tt-block tt-ev ${isDone(e.id) ? "done" : ""} ${e.virtual ? "class" : ""}" data-id="${e.id}" style="--c:${col(e.color)};top:${top}%;height:${h}%;left:calc(${(lane / n) * 100}% + 2px);width:calc(${100 / n}% - 4px)">
-        <b>${esc(e.title)}</b><span>${esc(e.time)}${e.end ? "–" + esc(e.end) : ""}${!e.virtual ? " · " + kindLabel(e.kind || "eval") : ""}</span>
-        ${e.virtual ? inside.filter((x) => sameSubject(x.subject, e.subject)).map((x) => `<span class="tt-task tt-ev ${isDone(x.id) ? "done" : ""}" data-id="${x.id}">${kindIcon(x.kind || "eval")}${esc(x.title)}${(x.chapters || []).length ? ` · ${plural(x.chapters.length, "chap.")}` : ""}${(x.attachments || []).length ? " 📎" : ""}</span>`).join("") : ""}${e.revision && !hasLevels() ? `<span class="tt-task">✨ Clique pour personnaliser</span>` : ""}${e.revision ? revisionFor(e).map((p) => `<span class="tt-task">📖 ${esc(pickLabel(p))}</span>`).join("") : ""}</button>`;
+        <b>${esc(revTitle(e))}</b><span>${esc(e.time)}${e.end ? "–" + esc(e.end) : ""}${!e.virtual ? " · " + kindLabel(e.kind || "eval") : ""}</span>
+        ${e.virtual ? inside.filter((x) => sameSubject(x.subject, e.subject)).map((x) => `<span class="tt-task tt-ev ${isDone(x.id) ? "done" : ""}" data-id="${x.id}">${kindIcon(x.kind || "eval")}${esc(x.title)}${(x.chapters || []).length ? ` · ${plural(x.chapters.length, "chap.")}` : ""}${(x.attachments || []).length ? " 📎" : ""}</span>`).join("") : ""}${e.revision && !hasLevels() ? `<span class="tt-task">✨ Clique pour personnaliser</span>` : ""}${e.revision ? revisionFor(e).map((p) => `<span class="tt-task">${isSujetSlot(e) ? "✏️" : "📖"} ${esc(pickLabel(p))}</span>`).join("") : ""}</button>`;
     }).join("");
     const now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
     const line = key === today && nowMin > TT_START * 60 && nowMin < TT_END * 60 ? `<div class="tt-now" style="top:${((nowMin - TT_START * 60) / 60) * 100 / (TT_END - TT_START)}%"></div>` : "";

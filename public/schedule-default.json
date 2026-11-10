@@ -38,7 +38,7 @@
       "start": "09:30",
       "end": "12:00",
       "subject": "Révision",
-      "title": "Révision · reprise de la semaine",
+      "title": "Révision · matin",
       "color": "green",
       "kind": "revision"
     },
@@ -47,7 +47,7 @@
       "start": "16:00",
       "end": "17:30",
       "subject": "Révision",
-      "title": "Révision · exercices",
+      "title": "Révision · fin d'après-midi",
       "color": "green",
       "kind": "revision"
     },
@@ -56,7 +56,7 @@
       "start": "10:00",
       "end": "12:00",
       "subject": "Révision",
-      "title": "Révision · questions de cours",
+      "title": "Révision · matin",
       "color": "green",
       "kind": "revision"
     },
@@ -65,7 +65,7 @@
       "start": "17:00",
       "end": "18:30",
       "subject": "Révision",
-      "title": "Révision · fiches et planning",
+      "title": "Révision · fin d'après-midi",
       "color": "green",
       "kind": "revision"
     }
