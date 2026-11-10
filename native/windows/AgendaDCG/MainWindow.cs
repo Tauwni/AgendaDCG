@@ -179,7 +179,7 @@ public class MainWindow : Window
     {
         if (pageHost == null || S.Profile == null) return;
         nav.Children.Clear();
-        foreach (var (id, label, glyph) in new[] { ("today", "Aujourd'hui", ""), ("agenda", "Agenda", ""), ("cours", "Cours", ""), ("notes", "Notes", ""), ("settings", "Réglages", "") })
+        foreach (var (id, label, glyph) in new[] { ("today", "Aujourd'hui", ""), ("agenda", "Agenda", ""), ("cours", "Cours", ""), ("notes", "Notes", ""), ("reviser", "Réviser", ""), ("settings", "Réglages", "") })
         {
             var row = H(12, Icon(glyph, 16, id == tab ? Theme.Accent : Theme.Text2), T(label, 14, id == tab ? FontWeights.SemiBold : FontWeights.Normal, id == tab ? Theme.Accent : Theme.Text));
             var item = new Border { Child = row, Padding = new Thickness(10, 8, 10, 8), CornerRadius = new CornerRadius(7), Background = id == tab ? Theme.AccentSoft : Brushes.Transparent, Cursor = Cursors.Hand, Margin = new Thickness(0, 0, 0, 3) };
@@ -192,6 +192,7 @@ public class MainWindow : Window
             "agenda" => AgendaPage(),
             "cours" => CoursPage(),
             "notes" => NotesPage(),
+            "reviser" => ReviserPage(),
             "settings" => SettingsPage(),
             _ => TodayPage(),
         };
@@ -228,7 +229,7 @@ public class MainWindow : Window
         var done = s.IsDone(e);
         var parts = new List<string> { Data.KindLabel(e.Kind) };
         if (showDate) parts.Add(Data.Relative(e.Date));
-        if (!string.IsNullOrEmpty(e.Time)) parts.Add(e.Time);
+        if (e.TimeLabel != null) parts.Add(e.TimeLabel);
         if (!string.IsNullOrEmpty(e.Subject)) parts.Add(e.Subject);
         var title = T(e.Title, 14, FontWeights.SemiBold, done ? Theme.Text2 : Theme.Text);
         if (done) title.TextDecorations = TextDecorations.Strikethrough;
@@ -247,7 +248,7 @@ public class MainWindow : Window
         var card = Card(g, 10);
         card.Margin = new Thickness(0, 0, 0, 8);
         card.Cursor = Cursors.Hand;
-        card.MouseLeftButtonUp += (_, ev) => { if (ev.OriginalSource is not TextBlock { FontFamily: var f } || f != Theme.Icons) Dialogs.EventDetail(e); };
+        card.MouseLeftButtonUp += (_, ev) => { if (ev.OriginalSource is not TextBlock { FontFamily: var f } || f != Theme.Icons) { if (e.IsClass) Dialogs.ClassDetail(e); else Dialogs.EventDetail(e); } };
         return card;
     }
 
@@ -259,6 +260,7 @@ public class MainWindow : Window
         var h = DateTime.Now.Hour;
         body.Children.Add(T($"{(h >= 5 && h < 18 ? "Bonjour" : "Bonsoir")}, {S.Name}", 30, FontWeights.Bold));
         if (Data.Holiday(today) is { } hol) body.Children.Add(T($"Jour férié : {hol}", 14, null, Theme.Orange));
+        else if (S.IsCompanyDay(today)) body.Children.Add(T("Journée en entreprise", 14, null, Theme.Text2));
         void Section(string title, List<AgendaEvent> list, string empty, bool showDate)
         {
             var t = T(title, 20, FontWeights.Bold); t.Margin = new Thickness(0, 22, 0, 8);
@@ -266,7 +268,7 @@ public class MainWindow : Window
             if (list.Count == 0) body.Children.Add(T(empty, 14, null, Theme.Text2));
             foreach (var e in list) body.Children.Add(EventRow(e, showDate));
         }
-        Section("Aujourd'hui", S.On(today), "Rien de prévu aujourd'hui.", false);
+        Section("Aujourd'hui", S.On(today), S.IsCompanyDay(today) ? "Journée en entreprise, pas de cours." : "Rien de prévu aujourd'hui.", false);
         var late = S.Events.Where(e => e.IsDeadline && string.CompareOrdinal(e.Date, today) < 0 && (DateTime.Today - Data.Parse(e.Date)).Days <= 14 && !S.IsDone(e)).OrderBy(e => e.SortKey).ToList();
         if (late.Count > 0) Section("Pas encore fait", late, "", true);
         var upcoming = S.Events.Where(e => e.IsDeadline && string.CompareOrdinal(e.Date, today) > 0 && (Data.Parse(e.Date) - DateTime.Today).Days <= 21).OrderBy(e => e.SortKey).ToList();
@@ -326,6 +328,7 @@ public class MainWindow : Window
             var list = new StackPanel();
             list.Children.Add(T(Data.Cap(Data.LongDate(selected)), 16, FontWeights.Bold));
             if (Data.Holiday(selected) is { } h) list.Children.Add(T(h, 13, null, Theme.Orange));
+            else if (S.IsCompanyDay(selected)) list.Children.Add(T("Journée en entreprise", 13, null, Theme.Text2));
             var evs = S.On(selected);
             if (evs.Count == 0) list.Children.Add(T("Rien ce jour-là.", 14, null, Theme.Text2));
             foreach (var e in evs) list.Children.Add(EventRow(e));
@@ -363,7 +366,9 @@ public class MainWindow : Window
             num.HorizontalAlignment = HorizontalAlignment.Center; num.VerticalAlignment = VerticalAlignment.Center;
             var badge = new Border { Width = 24, Height = 24, CornerRadius = new CornerRadius(12), Background = day == today ? Theme.Accent : Brushes.Transparent, Child = num, HorizontalAlignment = HorizontalAlignment.Left };
             var cell = new StackPanel();
-            var top = H(4, badge); if (hol != null) { var ht = T(hol, 10, null, Theme.Orange); ht.VerticalAlignment = VerticalAlignment.Center; top.Children.Add(ht); }
+            var top = H(4, badge);
+            var note = hol ?? (S.IsCompanyDay(day) ? "Entreprise" : null);
+            if (note != null) { var ht = T(note, 10, null, hol != null ? Theme.Orange : Theme.Text2); ht.VerticalAlignment = VerticalAlignment.Center; top.Children.Add(ht); }
             cell.Children.Add(top);
             var evs = S.On(day);
             foreach (var e in evs.Take(3))
@@ -394,17 +399,18 @@ public class MainWindow : Window
             var col = new StackPanel();
             col.Children.Add(H(6, T(d.ToString("ddd", Data.Fr), 12, null, Theme.Text2), T(d.Day.ToString(), 18, FontWeights.Bold, day == today ? Theme.Accent : Theme.Text)));
             if (Data.Holiday(day) is { } h) col.Children.Add(T(h, 11, null, Theme.Orange));
+            else if (S.IsCompanyDay(day)) col.Children.Add(T("Entreprise", 11, null, Theme.Text2));
             foreach (var e in S.On(day))
             {
                 var inner = new StackPanel();
-                if (!string.IsNullOrEmpty(e.Time)) inner.Children.Add(T(e.Time, 11, FontWeights.Bold));
+                if (e.TimeLabel != null) inner.Children.Add(T(e.TimeLabel, 11, FontWeights.Bold));
                 var t = new TextBlock { Text = e.Title, FontSize = 12, FontWeight = FontWeights.SemiBold, Foreground = Theme.Text, TextWrapping = TextWrapping.Wrap };
                 if (S.IsDone(e)) t.TextDecorations = TextDecorations.Strikethrough;
                 inner.Children.Add(t);
                 inner.Children.Add(T(Data.KindLabel(e.Kind), 11, null, Theme.Text2));
                 var ev = e;
                 var card = new Border { Child = inner, Background = Theme.Of(e.Color, (byte)(S.IsDone(e) ? 25 : 60)), BorderBrush = Theme.Of(e.Color), BorderThickness = new Thickness(3, 0, 0, 0), CornerRadius = new CornerRadius(6), Padding = new Thickness(6), Margin = new Thickness(0, 6, 0, 0), Cursor = Cursors.Hand };
-                card.MouseLeftButtonUp += (_, x) => { Dialogs.EventDetail(ev); x.Handled = true; };
+                card.MouseLeftButtonUp += (_, x) => { if (ev.IsClass) Dialogs.ClassDetail(ev); else Dialogs.EventDetail(ev); x.Handled = true; };
                 col.Children.Add(card);
             }
             var b = new Border { Child = new ScrollViewer { Content = col, VerticalScrollBarVisibility = ScrollBarVisibility.Auto }, Padding = new Thickness(8), Margin = new Thickness(4), CornerRadius = new CornerRadius(10), Background = day == today ? Theme.Of("red", 18) : Theme.Card };
@@ -502,6 +508,33 @@ public class MainWindow : Window
             c.Children.Add(dot);
         }
         return c;
+    }
+
+    // ---------- Réviser (Objectif DCG) ----------
+    public static void OpenRevise() => Process.Start(new ProcessStartInfo(Api.Revise.ToString()) { UseShellExecute = true });
+
+    UIElement ReviserPage()
+    {
+        var today = Data.Iso(DateTime.Today);
+        var logo = new Image { Width = 72, Height = 72, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 0, 18, 0) };
+        try { logo.Source = new BitmapImage(new Uri(Api.Revise, "icon-192.png")); } catch { }
+        var desc = new TextBlock { Text = "Plus de 3 500 flash cards, des quiz, une pile du jour et une ligue pour réviser le droit fiscal (UE4), le droit des sociétés (UE2) et la finance (UE6).", TextWrapping = TextWrapping.Wrap, Foreground = Theme.Text2, FontSize = 14, Margin = new Thickness(0, 6, 0, 14) };
+        var open = Btn("Ouvrir Objectif DCG", OpenRevise, primary: true); open.HorizontalAlignment = HorizontalAlignment.Left;
+        var row = new DockPanel();
+        DockPanel.SetDock(logo, Dock.Left); row.Children.Add(logo);
+        row.Children.Add(V(0, T("Objectif DCG", 20, FontWeights.Bold), desc, open));
+        var body = new StackPanel { MaxWidth = 760, HorizontalAlignment = HorizontalAlignment.Left };
+        body.Children.Add(Card(row, 20));
+        var next = S.Events.Where(e => e.IsDeadline && string.CompareOrdinal(e.Date, today) >= 0 && !S.IsDone(e)).OrderBy(e => e.SortKey).Take(4).ToList();
+        if (next.Count > 0)
+        {
+            var h = T("À réviser en priorité", 20, FontWeights.Bold); h.Margin = new Thickness(0, 24, 0, 8); body.Children.Add(h);
+            foreach (var e in next) body.Children.Add(EventRow(e, true));
+            var covered = next.Any(e => new[] { "UE2", "UE4", "UE6" }.Contains((e.Subject ?? "").Split(" · ")[0]));
+            body.Children.Add(new TextBlock { Text = covered ? "UE2, UE4 et UE6 sont dans Objectif DCG : lance une révision express avant le contrôle." : "Ces matières ne sont pas encore dans Objectif DCG : appuie-toi sur les fiches de l'onglet Cours.", TextWrapping = TextWrapping.Wrap, Foreground = Theme.Text2, FontSize = 13 });
+        }
+        body.Children.Add(new TextBlock { Text = "Objectif DCG est une appli créée par un camarade de la classe. Ta progression y est gardée sur son site, avec ton propre compte.", TextWrapping = TextWrapping.Wrap, Foreground = Theme.Text2, FontSize = 12, Margin = new Thickness(0, 20, 0, 0) });
+        return Page("Réviser", Scroll(body));
     }
 
     // ---------- Réglages ----------

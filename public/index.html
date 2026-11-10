@@ -252,7 +252,7 @@ input, textarea { font: inherit; color: var(--text); }
 .section h2 button { color: var(--accent); text-transform: none; font-size: 15px; letter-spacing: 0; }
 .invite { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 12px 14px; border-radius: 12px; background: var(--bg2); color: var(--text2); font-size: 15px; }
 .invite b { color: var(--accent); font-weight: 500; }
-.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; display: grid; grid-template-columns: repeat(5, 1fr); padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-top: .5px solid var(--line); }
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; display: grid; grid-template-columns: repeat(6, 1fr); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-top: .5px solid var(--line); }
 .tabbar button { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 0; color: var(--text2); font-size: 10.5px; font-weight: 500; transition: color .2s, transform .25s cubic-bezier(.32,.72,0,1); }
 .tabbar button svg { width: 26px; height: 26px; }
 .tabbar button.on { color: var(--accent); }
@@ -260,7 +260,7 @@ input, textarea { font: inherit; color: var(--text); }
 .tab-badge { position: absolute; margin-left: 18px; margin-top: -2px; min-width: 16px; height: 16px; border-radius: 8px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; display: grid; place-items: center; padding: 0 4px; }
 @media (min-width: 701px) {
   #app { padding-bottom: 40px; padding-top: 58px; }
-  .tabbar { top: 0; bottom: auto; padding: 8px max(16px, calc((100% - 1200px) / 2 + 16px)); grid-template-columns: repeat(5, auto); justify-content: start; gap: 4px; border-top: 0; border-bottom: .5px solid var(--line); }
+  .tabbar { top: 0; bottom: auto; padding: 8px max(16px, calc((100% - 1200px) / 2 + 16px)); grid-template-columns: repeat(6, auto); justify-content: start; gap: 4px; border-top: 0; border-bottom: .5px solid var(--line); }
   .tabbar button { flex-direction: row; gap: 7px; font-size: 15px; padding: 7px 13px; border-radius: 9px; }
   .tabbar button svg { width: 20px; height: 20px; }
   .tabbar button.on { background: color-mix(in srgb, var(--accent) 12%, transparent); }
@@ -279,6 +279,7 @@ input, textarea { font: inherit; color: var(--text); }
 .ev .t, .ev .s { transition: opacity .25s, color .25s; }
 .ev.done .t { text-decoration: line-through; text-decoration-color: var(--text2); color: var(--text2); }
 .ev.done .bar { opacity: .4; }
+.kind-badge .kind-ico { width: 13px; height: 13px; vertical-align: -2px; margin-right: 4px; }
 .ev .kind-ico { width: 14px; height: 14px; vertical-align: -2px; margin-right: 3px; color: var(--c); }
 .ev.late .meta .late-tag { color: var(--accent); font-weight: 600; }
 .jtag { font-size: 12px; font-weight: 700; padding: 2px 7px; border-radius: 8px; background: color-mix(in srgb, var(--c) 15%, transparent); color: var(--c); }
@@ -307,6 +308,11 @@ input, textarea { font: inherit; color: var(--text); }
 .day.holiday .num { color: var(--text2); }
 .pill.holiday-pill { --c: var(--text2); font-weight: 400; }
 .dot.holiday-dot { background: var(--text2); opacity: .6; }
+.revise-card { display: flex; gap: 16px; align-items: flex-start; padding: 18px; }
+.revise-card img { border-radius: 14px; flex: none; }
+.revise-card b { font-size: 18px; }
+.revise-card p { color: var(--text2); margin: 6px 0 14px; line-height: 1.45; }
+.revise-card .btn-row { display: inline-flex; width: auto; padding: 11px 20px; text-decoration: none; background: var(--accent); color: #fff; font-weight: 600; }
 .holiday-row { font-size: 13px; color: var(--text2); padding: 2px 2px 6px; display: flex; align-items: center; gap: 6px; }
 .holiday-row::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--text2); opacity: .7; }
 
@@ -479,6 +485,7 @@ input, textarea { font: inherit; color: var(--text); }
 
   <div class="page hidden" id="page-cours"></div>
   <div class="page hidden" id="page-notes"></div>
+  <div class="page hidden" id="page-reviser"></div>
   <div class="page hidden" id="page-settings"></div>
 </section>
 
@@ -487,6 +494,7 @@ input, textarea { font: inherit; color: var(--text); }
   <button data-tab="agenda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span>Agenda</span></button>
   <button data-tab="cours"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 015.5 4H10a2 2 0 012 2v14a1.5 1.5 0 00-1.5-1.5h-5A1.5 1.5 0 014 17z"/><path d="M20 5.5A1.5 1.5 0 0018.5 4H14a2 2 0 00-2 2v14a1.5 1.5 0 011.5-1.5h5a1.5 1.5 0 001.5-1.5z"/></svg><span>Cours</span></button>
   <button data-tab="notes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Notes</span></button>
+  <button data-tab="reviser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg><span>Réviser</span></button>
   <button data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg><span>Réglages</span></button>
 </nav>
 
@@ -555,6 +563,69 @@ function holidaysOf(year) {
   return (holidayCache[year] = list);
 }
 const holiday = (date) => holidaysOf(Number(date.slice(0, 4)))[date];
+
+/* ---------- Réviser : Objectif DCG ---------- */
+const REVISE_URL = "https://objectif-dcg.netlify.app/";
+const REVISE_UES = ["UE2", "UE4", "UE6"];
+function renderReviser() {
+  const today = iso(new Date());
+  const next = state.events.filter((e) => DEADLINE.has(e.kind || "eval") && e.date >= today && !isDone(e.id)).slice(0, 4);
+  const covered = (e) => REVISE_UES.includes((e.subject || "").split(" · ")[0]);
+  $("#page-reviser").innerHTML = `
+    <div class="page-head"><div><h1 class="page-title">Réviser</h1><div class="page-sub">Flash cards, fiches et quiz avec Objectif DCG</div></div></div>
+    <div class="section">
+      <div class="group revise-card">
+        <img src="https://objectif-dcg.netlify.app/icon-192.png" alt="" width="64" height="64">
+        <div>
+          <b>Objectif DCG</b>
+          <p>Plus de 3 500 flash cards, des quiz, une pile du jour et une ligue pour réviser le droit fiscal (UE4), le droit des sociétés (UE2) et la finance (UE6).</p>
+          <a class="btn-row blue" href="${REVISE_URL}" target="_blank" rel="noopener">Ouvrir Objectif DCG</a>
+        </div>
+      </div>
+    </div>
+    ${next.length ? `<div class="section"><h2>À réviser en priorité</h2><div class="list">${next.map((e) => evCard(e, { withDate: true, countdown: true })).join("")}</div>
+      <p class="page-sub" style="margin-top:8px">${next.some(covered) ? "Les matières UE2, UE4 et UE6 sont dans Objectif DCG : lance une révision express avant le contrôle." : "Ces matières ne sont pas encore dans Objectif DCG : appuie-toi sur les fiches de l'onglet Cours."}</p></div>` : ""}
+    <div class="section"><p class="page-sub">Objectif DCG est une appli créée par un camarade de la classe. Ta progression y est gardée sur son site, avec ton propre compte.</p></div>`;
+}
+
+function openClass(id) {
+  const key = id.split(":")[1];
+  const c = classesOn(key).find((x) => x.id === id);
+  if (!c) return;
+  const chs = state.chapters.filter((x) => x.subject === c.subject);
+  const bd = openSheet(`
+    <div class="sheet-head"><button class="link" data-act="close">Fermer</button><h3></h3><span></span></div>
+    <div class="sheet-body">
+      <div>
+        <span class="kind-badge" style="--c:${col(c.color)}">${kindIcon("cours")}Cours · emploi du temps</span>
+        <h2 class="detail-title" style="--c:${col(c.color)}"><span class="bar"></span><span>${esc(c.title)}</span></h2>
+        <div class="detail-sub">${esc(c.subject)} · ${longDate(key)} · ${esc(c.time)}–${esc(c.end)}</div>
+      </div>
+      ${chs.length ? `<button class="btn-row blue" data-act="cours">Voir les cours de ${esc(c.subject.split(" · ")[0])} (${plural(chs.length, "chapitre")})</button>` : ""}
+      <button class="btn-row" data-act="revise">Réviser avec Objectif DCG</button>
+      <div class="detail-sub">Cours fixe de l'emploi du temps : il revient chaque semaine.</div>
+    </div>`);
+  bd.querySelector("[data-act=close]").onclick = () => closeSheet();
+  const go = bd.querySelector("[data-act=cours]");
+  if (go) go.onclick = () => { closeSheet(); showTab("cours"); };
+  bd.querySelector("[data-act=revise]").onclick = () => window.open(REVISE_URL, "_blank", "noopener");
+}
+
+/* ---------- Emploi du temps fixe (public/schedule.json) ---------- */
+function inTerm(key) {
+  const s = state.schedule;
+  return !!s && (!s.from || key >= s.from) && (!s.to || key <= s.to) && !(s.skip || []).includes(key) && !holiday(key);
+}
+function classesOn(key) {
+  if (!inTerm(key)) return [];
+  const wd = parse(key).getDay();
+  return (state.schedule.classes || []).filter((c) => c.day === wd).map((c, i) => ({
+    id: `edt:${key}:${i}`, virtual: true, kind: "cours", title: c.title, subject: c.subject, date: key, time: c.start, end: c.end, color: c.color, chapters: [], history: [],
+  }));
+}
+const companyDay = (key) => inTerm(key) && (state.schedule.companyDays || []).includes(parse(key).getDay());
+const dayNote = (key) => holiday(key) || (companyDay(key) ? "Entreprise" : "");
+const dayEvents = (key) => [...classesOn(key), ...state.events.filter((e) => e.date === key)].sort((a, b) => (a.time || "").localeCompare(b.time || ""));
 
 function getName() { return state.profile?.name || (() => { try { return localStorage.getItem("agenda_name") || ""; } catch { return ""; } })(); }
 
@@ -645,7 +716,7 @@ $("#loginForm").addEventListener("submit", async (e) => {
 
 async function start() {
   if (!state.profile) state.profile = await api("profile");
-  [state.events, state.chapters] = await Promise.all([api("events"), api("chapters")]);
+  [state.events, state.chapters, state.schedule] = await Promise.all([api("events"), api("chapters"), fetch("/schedule.json", { cache: "no-cache" }).then((r) => r.json()).catch(() => null)]);
   const wasHidden = $("#app").classList.contains("hidden");
   $("#login").classList.add("hidden");
   $("#app").classList.remove("hidden");
@@ -686,6 +757,7 @@ function renderTab(tab) {
   if (tab === "agenda") renderAgenda(false);
   if (tab === "cours") renderCours();
   if (tab === "notes") renderNotes();
+  if (tab === "reviser") renderReviser();
   if (tab === "settings") renderSettings();
 }
 function renderAll() {
@@ -733,7 +805,7 @@ function evCard(e, opts = {}) {
   const kind = e.kind || "eval";
   const today = iso(new Date());
   const late = opts.late || (DEADLINE.has(kind) && e.date < today && !isDone(e.id));
-  const parts = [opts.withDate && shortDate(e.date), e.time].filter(Boolean).join(" · ");
+  const parts = [opts.withDate && shortDate(e.date), e.time && (e.end ? `${e.time}–${e.end}` : e.time)].filter(Boolean).join(" · ");
   const n = (e.chapters || []).length;
   const j = opts.countdown ? daysBetween(today, e.date) : null;
   return `<div class="ev ${isDone(e.id) ? "done" : ""} ${late ? "late" : ""}" data-id="${e.id}" role="button" tabindex="0" style="--c:${col(e.color)}">
@@ -744,7 +816,7 @@ function evCard(e, opts = {}) {
       <div class="meta"><span>${kindIcon(kind)}${kindLabel(kind)}${parts ? " · " + esc(parts) : ""}</span>${late && opts.showLate ? `<span class="late-tag">En retard</span>` : ""}${n && !opts.compact ? `<span>${clip} ${plural(n, "chapitre")}</span>` : ""}</div>
     </span>
     ${j !== null && j >= 0 ? `<span class="jtag" style="align-self:center">${j === 0 ? "Aujourd'hui" : j === 1 ? "Demain" : "J-" + j}</span>` : ""}
-    <button class="check" data-done="${e.id}" aria-label="${isDone(e.id) ? "Marquer à faire" : "Marquer comme fait"}">${checkSvg}</button>
+    ${e.virtual ? "" : `<button class="check" data-done="${e.id}" aria-label="${isDone(e.id) ? "Marquer à faire" : "Marquer comme fait"}">${checkSvg}</button>`}
   </div>`;
 }
 
@@ -764,7 +836,8 @@ function renderToday() {
   const name = state.profile?.name || "";
   const h = new Date().getHours();
   const hello = h < 5 ? "Bonne nuit" : h < 18 ? "Bonjour" : "Bonsoir";
-  const todays = state.events.filter((e) => e.date === today);
+  const todays = dayEvents(today);
+  const atWork = companyDay(today);
   const late = lateItems();
   const horizon = iso(addDays(new Date(), 21));
   const next = state.events.filter((e) => DEADLINE.has(e.kind || "eval") && e.date > today && e.date <= horizon && !isDone(e.id)).slice(0, 6);
@@ -779,12 +852,12 @@ function renderToday() {
     <div class="page-head"><div>
       <div class="today-date">${esc(dayMonth(today))}</div>
       <h1 class="page-title">${hello}${name ? ", " + esc(name) : ""}</h1>
-      ${fer ? `<div class="page-sub">Jour férié : <b>${esc(fer)}</b></div>` : ""}
+      ${fer ? `<div class="page-sub">Jour férié : <b>${esc(fer)}</b></div>` : atWork ? `<div class="page-sub">Journée en <b>entreprise</b></div>` : ""}
     </div></div>
 
     <div class="section">
       <h2>Au programme aujourd'hui <button data-go-add>Ajouter</button></h2>
-      <div class="list">${todays.length ? todays.map((e) => evCard(e)).join("") : `<div class="invite">Rien de prévu aujourd'hui.</div>`}</div>
+      <div class="list">${todays.length ? todays.map((e) => evCard(e)).join("") : `<div class="invite">${atWork ? "Journée en entreprise, pas de cours." : "Rien de prévu aujourd'hui."}</div>`}</div>
     </div>
 
     ${late.length ? `<div class="section">
@@ -818,6 +891,16 @@ document.addEventListener("click", (e) => {
 function byDate() {
   const m = {};
   for (const e of state.events) (m[e.date] ||= []).push(e);
+  if (state.schedule) {
+    const from = state.view === "month" ? state.month : state.weekStart;
+    for (let i = -7; i < 45; i++) {
+      const key = iso(addDays(from, i));
+      const c = classesOn(key);
+      if (c.length) m[key] = [...c, ...(m[key] || [])].sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+    }
+    const sel = state.selected, c = classesOn(sel);
+    if (c.length && !(m[sel] || []).some((e) => e.virtual)) m[sel] = [...c, ...(m[sel] || [])].sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+  }
   return m;
 }
 
@@ -848,7 +931,7 @@ function monthHtml() {
     const d = new Date(m.getFullYear(), m.getMonth(), n);
     const key = iso(d);
     const evs = map[key] || [];
-    const fer = holiday(key);
+    const fer = dayNote(key);
     const cls = ["day", key === today && "today", key === state.selected && "selected", d.getDay() % 6 === 0 && "weekend", fer && "holiday"].filter(Boolean).join(" ");
     const pills = (fer ? `<div class="pill holiday-pill">${esc(fer)}</div>` : "") + evs.slice(0, fer ? 2 : 3).map((e) => `<div class="pill" style="--c:${col(e.color)}${isDone(e.id) ? ";opacity:.45;text-decoration:line-through" : ""}">${esc(e.title)}</div>`).join("");
     const shown = fer ? 2 : 3;
@@ -867,7 +950,7 @@ function weekHtml() {
     const d = addDays(state.weekStart, i);
     const key = iso(d);
     const evs = map[key] || [];
-    const fer = holiday(key);
+    const fer = dayNote(key);
     const cls = ["wday", key === today && "today", key === state.selected && "selected", d.getDay() % 6 === 0 && "weekend", fer && "holiday"].filter(Boolean).join(" ");
     html += `<section class="${cls}" data-date="${key}">
       <button class="wday-head" data-date="${key}" aria-label="${longDate(key)}"><span class="wd-name">${DAYS[d.getDay()].slice(0, 3)}</span><span class="wd-num">${d.getDate()}</span></button>
@@ -883,7 +966,7 @@ function renderPanel(animate) {
   const sel = map[state.selected] || [];
   const fer = holiday(state.selected);
   $("#dayTitle").innerHTML = `<small>${state.selected === today ? "Aujourd'hui" : DAYS[parse(state.selected).getDay()]}</small>${parse(state.selected).getDate()} ${MONTHS[parse(state.selected).getMonth()]}`;
-  $("#dayList").innerHTML = (fer ? `<div class="holiday-row">Jour férié · ${esc(fer)}</div>` : "") + (sel.length ? sel.map((e) => evCard(e)).join("") : `<div class="empty">Rien ce jour-là</div>`);
+  $("#dayList").innerHTML = (fer ? `<div class="holiday-row">Jour férié · ${esc(fer)}</div>` : companyDay(state.selected) ? `<div class="holiday-row">Journée en entreprise</div>` : "") + (sel.length ? sel.map((e) => evCard(e)).join("") : `<div class="empty">Rien ce jour-là</div>`);
   const upcoming = state.events.filter((e) => e.date >= today && !isDone(e.id)).slice(0, 6);
   $("#upcomingList").innerHTML = upcoming.length ? upcoming.map((e) => evCard(e, { withDate: true })).join("") : `<div class="empty">Rien de prévu</div>`;
   for (const list of [$("#dayList"), $("#upcomingList")]) [...list.children].forEach((c, i) => c.style.setProperty("--i", i));
@@ -1446,6 +1529,7 @@ function openEdit(ev, date, draft) {
 }
 
 function openDetail(id) {
+  if (String(id).startsWith("edt:")) return openClass(id);
   const e = state.events.find((x) => x.id === id);
   if (!e) return closeSheet();
   const kind = e.kind || "eval";

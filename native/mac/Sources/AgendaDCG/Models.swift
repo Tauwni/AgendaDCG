@@ -18,10 +18,38 @@ struct AgendaEvent: Codable, Identifiable, Hashable {
     var updatedBy: String?
     var updatedAt: String?
     var history: [HistoryEntry]?
+    var end: String?
 
     var isDeadline: Bool { Kind.deadline.contains(kind) }
+    var isClass: Bool { id.hasPrefix("edt:") }
+    var timeLabel: String? { guard let t = time, !t.isEmpty else { return nil }; return end.map { "\(t)–\($0)" } ?? t }
     var sortKey: String { date + (time ?? "") }
 }
+
+/// Emploi du temps fixe, lu dans public/schedule.json (modifiable sans mettre à jour l'app).
+struct Schedule: Codable {
+    struct Slot: Codable { var day: Int; var start: String; var end: String; var subject: String; var title: String; var color: String }
+    var classes: [Slot]
+    var companyDays: [Int]
+    var from: String?
+    var to: String?
+    var skip: [String]?
+
+    func inTerm(_ day: String) -> Bool {
+        (from.map { day >= $0 } ?? true) && (to.map { day <= $0 } ?? true) && !(skip ?? []).contains(day) && holiday(day) == nil
+    }
+    /// jour de semaine façon JavaScript : 0 = dimanche … 6 = samedi
+    static func weekday(_ day: String) -> Int { cal.component(.weekday, from: parseISO(day)) - 1 }
+    func classes(on day: String) -> [AgendaEvent] {
+        guard inTerm(day) else { return [] }
+        return classes.enumerated().filter { $0.element.day == Self.weekday(day) }.map { i, c in
+            AgendaEvent(id: "edt:\(day):\(i)", kind: "cours", title: c.title, subject: c.subject, date: day, time: c.start, color: c.color, notes: nil, chapters: [], end: c.end)
+        }
+    }
+    func isCompanyDay(_ day: String) -> Bool { inTerm(day) && companyDays.contains(Self.weekday(day)) }
+}
+
+let REVISE_URL = URL(string: "https://objectif-dcg.netlify.app/")!
 
 struct PdfFile: Codable, Hashable { var key: String; var name: String; var size: Int?; var uploadedBy: String?; var uploadedAt: String? }
 

@@ -9,6 +9,17 @@ static class Demo
         var mon = -(((int)DateTime.Today.DayOfWeek + 6) % 7);
         const string UE10 = "UE10 · Comptabilité approfondie", UE4 = "UE4 · Droit fiscal", UE6 = "UE6 · Finance d'entreprise", UE2 = "UE2 · Droit des sociétés";
         var s = Store.I;
+        s.Schedule = new()
+        {
+            CompanyDays = new() { 1, 2, 3 },
+            Classes = new()
+            {
+                new() { Day = 4, Start = "08:30", End = "12:30", Subject = UE2, Title = "Droit des sociétés", Color = "brown" },
+                new() { Day = 4, Start = "13:30", End = "17:30", Subject = UE4, Title = "Droit fiscal", Color = "purple" },
+                new() { Day = 5, Start = "08:30", End = "12:30", Subject = UE6, Title = "Finance d'entreprise", Color = "yellow" },
+                new() { Day = 5, Start = "13:30", End = "17:30", Subject = UE10, Title = "Comptabilité approfondie", Color = "red" },
+            },
+        };
         s.Chapters = new()
         {
             new() { Id = "c1", Subject = UE10, Title = "Chapitre 6 – Les provisions pour risques et charges", Files = new() { ["cours"] = new() { Key = "k1", Name = "Fiche.pdf", Size = 812000 }, ["sujet"] = new() { Key = "k2", Name = "Sujet.pdf", Size = 240000 }, ["corrige"] = null, ["topexo"] = null } },

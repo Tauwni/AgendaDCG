@@ -75,6 +75,7 @@ final class AppModel: ObservableObject {
     @Published var profile: Profile?
     @Published var toast: String?
     @Published var offline = false
+    @Published var schedule: Schedule?
 
     enum Phase { case loading, login, ready }
     private var poll: Timer?
@@ -86,7 +87,8 @@ final class AppModel: ObservableObject {
         let have = Set(chapters.map(\.subject))
         return SUBJECTS.filter(have.contains) + have.subtracting(SUBJECTS).sorted()
     }
-    func events(on day: String) -> [AgendaEvent] { events.filter { $0.date == day }.sorted { $0.sortKey < $1.sortKey } }
+    func events(on day: String) -> [AgendaEvent] { ((schedule?.classes(on: day) ?? []) + events.filter { $0.date == day }).sorted { $0.sortKey < $1.sortKey } }
+    func isCompanyDay(_ day: String) -> Bool { schedule?.isCompanyDay(day) ?? false }
 
     func start() async {
         // Tests locaux uniquement : AGENDA_SITE=http://localhost:8888 AGENDA_TEST_LOGIN="prénom:code:motdepasse"
@@ -138,6 +140,7 @@ final class AppModel: ObservableObject {
             async let e: [AgendaEvent] = API.call("events")
             async let c: [Chapter] = API.call("chapters")
             let (ev, ch) = try await (e, c)
+            if let (d, _) = try? await API.session.data(from: URL(string: "schedule.json", relativeTo: SITE)!), let s = try? JSONDecoder().decode(Schedule.self, from: d) { schedule = s }
             let previous = Set(events.map(\.id))
             let first = events.isEmpty
             events = ev

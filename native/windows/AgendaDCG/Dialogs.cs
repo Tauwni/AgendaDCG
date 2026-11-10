@@ -46,6 +46,28 @@ public static class Dialogs
         w.ShowDialog();
     }
 
+    public static void ClassDetail(AgendaEvent e)
+    {
+        Window? w = null;
+        var body = new StackPanel();
+        body.Children.Add(H(8, Icon(Data.KindGlyph("cours"), 15, Theme.Of(e.Color)), T("Cours · emploi du temps", 14, FontWeights.SemiBold, Theme.Of(e.Color))));
+        var title = T(e.Title, 24, FontWeights.Bold); title.Margin = new Thickness(0, 8, 0, 8); body.Children.Add(title);
+        body.Children.Add(T($"{Data.Cap(Data.LongDate(e.Date))} · {e.TimeLabel}", 14, null, Theme.Text2));
+        body.Children.Add(T(e.Subject ?? "", 14, null, Theme.Text2));
+        var chs = S.Chapters.Where(c => c.Subject == e.Subject).ToList();
+        if (chs.Count > 0)
+        {
+            var h = T("Cours de la matière", 16, FontWeights.Bold); h.Margin = new Thickness(0, 16, 0, 6); body.Children.Add(h);
+            foreach (var ch in chs) { var f = ChapterFiles(ch, false); f.Margin = new Thickness(0, 0, 0, 10); body.Children.Add(f); }
+        }
+        var actions = new DockPanel { Margin = new Thickness(0, 18, 0, 0) };
+        var rev = Btn("Réviser avec Objectif DCG", MainWindow.OpenRevise, primary: true); DockPanel.SetDock(rev, Dock.Right); actions.Children.Add(rev);
+        var note = T("Revient chaque semaine.", 12, null, Theme.Text2); note.VerticalAlignment = VerticalAlignment.Center; actions.Children.Add(note);
+        body.Children.Add(actions);
+        w = Dialog(e.Title, body, 520);
+        w.ShowDialog();
+    }
+
     public static void EventEditor(AgendaEvent? existing, string date)
     {
         var isNew = existing == null;

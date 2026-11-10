@@ -1,0 +1,13 @@
+{
+  "note": "Emploi du temps fixe de la classe. Modifier ce fichier puis déployer : le site et les apps le relisent tout seuls.",
+  "classes": [
+    { "day": 4, "start": "08:30", "end": "12:30", "subject": "UE2 · Droit des sociétés", "title": "Droit des sociétés", "color": "brown" },
+    { "day": 4, "start": "13:30", "end": "17:30", "subject": "UE4 · Droit fiscal", "title": "Droit fiscal", "color": "purple" },
+    { "day": 5, "start": "08:30", "end": "12:30", "subject": "UE6 · Finance d'entreprise", "title": "Finance d'entreprise", "color": "yellow" },
+    { "day": 5, "start": "13:30", "end": "17:30", "subject": "UE10 · Comptabilité approfondie", "title": "Comptabilité approfondie", "color": "red" }
+  ],
+  "companyDays": [1, 2, 3],
+  "from": "2026-09-01",
+  "to": "2027-06-30",
+  "skip": []
+}

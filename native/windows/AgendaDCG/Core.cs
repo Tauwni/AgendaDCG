@@ -23,8 +23,34 @@ public class AgendaEvent
     public List<string>? Chapters { get; set; }
     public string? CreatedBy { get; set; }
     public string? UpdatedBy { get; set; }
+    public string? End { get; set; }
     [JsonIgnore] public bool IsDeadline => Data.Deadline.Contains(Kind);
+    [JsonIgnore] public bool IsClass => Id.StartsWith("edt:");
+    [JsonIgnore] public string? TimeLabel => string.IsNullOrEmpty(Time) ? null : End == null ? Time : $"{Time}–{End}";
     [JsonIgnore] public string SortKey => Date + (Time ?? "");
+}
+
+/// Emploi du temps fixe, lu dans public/schedule.json (modifiable sans mettre à jour l'app).
+public class Schedule
+{
+    public class Slot { public int Day { get; set; } public string Start { get; set; } = ""; public string End { get; set; } = ""; public string Subject { get; set; } = ""; public string Title { get; set; } = ""; public string Color { get; set; } = "blue"; }
+    public List<Slot> Classes { get; set; } = new();
+    public List<int> CompanyDays { get; set; } = new();
+    public string? From { get; set; }
+    public string? To { get; set; }
+    public List<string>? Skip { get; set; }
+
+    bool InTerm(string day) => (From == null || string.CompareOrdinal(day, From) >= 0) && (To == null || string.CompareOrdinal(day, To) <= 0) && !(Skip ?? new()).Contains(day) && Data.Holiday(day) == null;
+    public List<AgendaEvent> On(string day)
+    {
+        if (!InTerm(day)) return new();
+        var wd = (int)Data.Parse(day).DayOfWeek;
+        return Classes.Select((c, i) => (c, i)).Where(x => x.c.Day == wd).Select(x => new AgendaEvent
+        {
+            Id = $"edt:{day}:{x.i}", Kind = "cours", Title = x.c.Title, Subject = x.c.Subject, Date = day, Time = x.c.Start, End = x.c.End, Color = x.c.Color, Chapters = new(),
+        }).ToList();
+    }
+    public bool IsCompanyDay(string day) => InTerm(day) && CompanyDays.Contains((int)Data.Parse(day).DayOfWeek);
 }
 
 public class PdfFile
@@ -148,6 +174,7 @@ public class ApiException(string message, int status) : Exception(message) { pub
 
 public static class Api
 {
+    public static readonly Uri Revise = new("https://objectif-dcg.netlify.app/");
     public static readonly Uri Site = new(Environment.GetEnvironmentVariable("AGENDA_SITE") ?? "https://agendadcg.netlify.app");
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
     static readonly string Dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AgendaDCG");
@@ -213,13 +240,15 @@ public class Store
     public List<AgendaEvent> Events = new();
     public List<Chapter> Chapters = new();
     public Profile? Profile;
+    public Schedule? Schedule;
     public bool Offline;
     public event Action? Changed;
 
     public string Name => Profile?.Name ?? "";
     public bool IsDone(AgendaEvent e) => Profile?.Done.Contains(e.Id) ?? false;
     public Chapter? Chapter(string id) => Chapters.FirstOrDefault(c => c.Id == id);
-    public List<AgendaEvent> On(string day) => Events.Where(e => e.Date == day).OrderBy(e => e.SortKey).ToList();
+    public List<AgendaEvent> On(string day) => (Schedule?.On(day) ?? new()).Concat(Events.Where(e => e.Date == day)).OrderBy(e => e.SortKey).ToList();
+    public bool IsCompanyDay(string day) => Schedule?.IsCompanyDay(day) ?? false;
     public List<string> CourseSubjects()
     {
         var have = Chapters.Select(c => c.Subject).ToHashSet();
@@ -233,6 +262,7 @@ public class Store
         {
             var ev = await Api.Get<List<AgendaEvent>>("events");
             var ch = await Api.Get<List<Chapter>>("chapters");
+            try { Schedule = JsonSerializer.Deserialize<Schedule>(await Api.Http.GetStringAsync(new Uri(Api.Site, "schedule.json")), Api.Json); } catch { }
             var previous = Events.Select(e => e.Id).ToHashSet();
             var first = Events.Count == 0;
             Events = ev;

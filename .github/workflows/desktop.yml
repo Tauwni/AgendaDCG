@@ -86,7 +86,7 @@ jobs:
             Stop-Process -Id $p.Id; Start-Sleep -Seconds 2
           }
           Shot "1-connexion" "" ""
-          foreach ($t in "today", "agenda", "cours", "notes", "settings") { Shot "2-$t" "1" $t }
+          foreach ($t in "today", "agenda", "cours", "notes", "reviser", "settings") { Shot "2-$t" "1" $t }
           $env:AGENDA_DEMO = ""
       - name: Paquet Velopack (installeur + mises à jour)
         working-directory: native/windows

@@ -31,13 +31,13 @@ struct EventRow: View {
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 10))
         .contentShape(Rectangle())
         .onTapGesture { detail = true }
-        .sheet(isPresented: $detail) { EventDetail(event: model.events.first { $0.id == event.id } ?? event) }
+        .sheet(isPresented: $detail) { if event.isClass { ClassDetail(event: event) } else { EventDetail(event: model.events.first { $0.id == event.id } ?? event) } }
     }
 
     var meta: String {
         var parts = [Kind.label(event.kind)]
         if showDate { parts.append(relativeDay(event.date)) }
-        if let t = event.time, !t.isEmpty { parts.append(t) }
+        if let t = event.timeLabel { parts.append(t) }
         if let s = event.subject, !s.isEmpty { parts.append(s) }
         return parts.joined(separator: " · ")
     }
@@ -61,7 +61,8 @@ struct TodayView: View {
                     Text("\(greeting), \(model.name)").font(.largeTitle.bold())
                 }
                 if let h = holiday(today) { Label("Jour férié : \(h)", systemImage: "sun.max").foregroundStyle(.orange) }
-                section("Aujourd'hui", todays, empty: "Rien de prévu aujourd'hui.")
+                else if model.isCompanyDay(today) { Label("Journée en entreprise", systemImage: "briefcase").foregroundStyle(.secondary) }
+                section("Aujourd'hui", todays, empty: model.isCompanyDay(today) ? "Journée en entreprise, pas de cours." : "Rien de prévu aujourd'hui.")
                 if !late.isEmpty { section("Pas encore fait", late, showDate: true) }
                 section("À venir", upcoming, empty: "Aucune échéance dans les 3 prochaines semaines.", showDate: true)
             }
@@ -253,6 +254,7 @@ struct DayCell: View {
                     .frame(width: 24, height: 24)
                     .background(isToday ? Color.red : .clear, in: Circle())
                 if let h { Text(h).font(.caption2).foregroundStyle(.orange).lineLimit(1) }
+                else if model.isCompanyDay(day) { Text("Entreprise").font(.caption2).foregroundStyle(.secondary).lineLimit(1) }
             }
             ForEach(list.prefix(3)) { e in
                 Text(e.title).font(.caption2).lineLimit(1)
@@ -280,6 +282,7 @@ struct DayList: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(longDate(day).capitalized).font(.headline)
                 if let h = holiday(day) { Label(h, systemImage: "sun.max").foregroundStyle(.orange).font(.callout) }
+                else if model.isCompanyDay(day) { Label("Journée en entreprise", systemImage: "briefcase").foregroundStyle(.secondary).font(.callout) }
                 let list = model.events(on: day)
                 if list.isEmpty { Text("Rien ce jour-là.").foregroundStyle(.secondary) }
                 ForEach(list) { EventRow(event: $0) }
@@ -309,6 +312,7 @@ struct WeekColumns: View {
                             .foregroundStyle(day == today ? .red : .primary)
                     }
                     if let h = holiday(day) { Text(h).font(.caption2).foregroundStyle(.orange) }
+                    else if model.isCompanyDay(day) { Label("Entreprise", systemImage: "briefcase").font(.caption2).foregroundStyle(.secondary) }
                     ScrollView {
                         VStack(spacing: 6) {
                             ForEach(model.events(on: day)) { WeekEvent(event: $0) }
@@ -338,7 +342,7 @@ struct WeekEvent: View {
     var body: some View {
         let done = model.isDone(event)
         VStack(alignment: .leading, spacing: 2) {
-            if let t = event.time, !t.isEmpty { Text(t).font(.caption2.bold()) }
+            if let t = event.timeLabel { Text(t).font(.caption2.bold()) }
             Text(event.title).font(.caption.weight(.semibold)).strikethrough(done)
             Text(Kind.label(event.kind)).font(.caption2).foregroundStyle(.secondary)
         }
@@ -347,7 +351,39 @@ struct WeekEvent: View {
         .background(eventColor(event.color).opacity(done ? 0.08 : 0.2), in: RoundedRectangle(cornerRadius: 6))
         .overlay(alignment: .leading) { RoundedRectangle(cornerRadius: 2).fill(eventColor(event.color)).frame(width: 3) }
         .onTapGesture { detail = true }
-        .sheet(isPresented: $detail) { EventDetail(event: model.events.first { $0.id == event.id } ?? event) }
+        .sheet(isPresented: $detail) { if event.isClass { ClassDetail(event: event) } else { EventDetail(event: model.events.first { $0.id == event.id } ?? event) } }
+    }
+}
+
+/// Cours fixe de l'emploi du temps.
+struct ClassDetail: View {
+    @EnvironmentObject var model: AppModel
+    @Environment(\.dismiss) var dismiss
+    let event: AgendaEvent
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Label("Cours · emploi du temps", systemImage: "graduationcap").foregroundStyle(eventColor(event.color))
+                Spacer()
+                Button("Fermer") { dismiss() }.keyboardShortcut(.cancelAction)
+            }
+            Text(event.title).font(.title.bold())
+            Label("\(longDate(event.date).capitalized) · \(event.timeLabel ?? "")", systemImage: "clock").foregroundStyle(.secondary)
+            if let s = event.subject { Label(s, systemImage: "book.closed").foregroundStyle(.secondary) }
+            let chs = model.chapters.filter { $0.subject == event.subject }
+            if !chs.isEmpty {
+                Text("Cours de la matière").font(.headline)
+                ScrollView { VStack(alignment: .leading, spacing: 10) { ForEach(chs) { ChapterFiles(chapter: $0) } } }
+            }
+            Spacer(minLength: 0)
+            HStack {
+                Text("Revient chaque semaine.").font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button("Réviser avec Objectif DCG") { ReviseWindow.show() }.buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(24)
+        .frame(width: 500, height: 520)
     }
 }
 
