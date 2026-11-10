@@ -97,9 +97,7 @@ final class AppModel: ObservableObject {
         return out
     }
     func inClass(_ e: AgendaEvent) -> Bool {
-        guard !e.isClass, let c = classFor(e.date, e.subject) else { return false }
-        guard let t = e.time, !t.isEmpty else { return true }
-        return t >= (c.time ?? "") && t < (c.end ?? "")
+        !e.isClass && classFor(e.date, e.subject) != nil
     }
     var pastHomework: [AgendaEvent] { let t = iso(Date()); return events.filter { $0.date < t && !($0.attachments ?? []).isEmpty }.sorted { $0.date > $1.date } }
 

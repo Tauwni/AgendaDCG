@@ -340,7 +340,7 @@ a.nav-row { color: inherit; text-decoration: none; }
 .quick-dates button { padding: 5px 10px; border-radius: 14px; background: var(--card); color: var(--blue); font-weight: 600; font-size: 13px; }
 .tt-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--accent); z-index: 3; }
 .tt-now::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
-@media (max-width: 700px) { .view-toggle button { padding: 5px 8px; font-size: 12.5px; } .topbar .left { gap: 0; } .tt { grid-template-columns: 30px repeat(var(--days), minmax(0, 1fr)); column-gap: 2px; } .tt-block { padding: 4px; } .tt-block b { font-size: 11px; } .tt-block span { display: none; } .tt-hours div { font-size: 10px; padding-right: 3px; } }
+@media (max-width: 700px) { .view-toggle button { padding: 5px 8px; font-size: 12.5px; } .topbar .left { gap: 0; } .tt { grid-template-columns: 30px repeat(var(--days), minmax(0, 1fr)); column-gap: 2px; } .tt-block { padding: 4px; } .tt-block b { font-size: 11px; } .tt-block span:not(.tt-task) { display: none; } .tt-task { padding: 2px 3px; font-size: 9.5px !important; } .tt-task .kind-ico { display: none; } .tt-hours div { font-size: 10px; padding-right: 3px; } }
 .cahier { max-width: 760px; }
 .cahier-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
 .cahier-add { white-space: nowrap; width: auto; font-size: 15px; font-weight: 600; padding: 9px 16px; }
@@ -670,7 +670,7 @@ const nextClasses = (subject, from = iso(new Date()), n = 4) => {
   return out;
 };
 /** Devoir / éval rangé dans le créneau d'un cours (même jour, même matière). */
-const inClass = (e) => !e.virtual && !!classFor(e.date, e.subject) && (!e.time || (() => { const c = classFor(e.date, e.subject); return e.time >= c.time && e.time < c.end; })());
+const inClass = (e) => !e.virtual && !!classFor(e.date, e.subject);
 const dayNote = (key) => holiday(key) || (companyDay(key) ? "Entreprise" : "");
 const dayEvents = (key) => [...classesOn(key), ...state.events.filter((e) => e.date === key)].sort((a, b) => (a.time || "").localeCompare(b.time || ""));
 

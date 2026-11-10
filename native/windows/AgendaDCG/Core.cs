@@ -262,8 +262,7 @@ public class Store
     }
     public bool InClass(AgendaEvent e)
     {
-        if (e.IsClass || ClassFor(e.Date, e.Subject) is not { } c) return false;
-        return string.IsNullOrEmpty(e.Time) || (string.CompareOrdinal(e.Time, c.Time) >= 0 && string.CompareOrdinal(e.Time, c.End) < 0);
+        return !e.IsClass && ClassFor(e.Date, e.Subject) != null;
     }
     public List<AgendaEvent> PastHomework() { var t = Data.Iso(DateTime.Today); return Events.Where(e => string.CompareOrdinal(e.Date, t) < 0 && (e.Attachments?.Count ?? 0) > 0).OrderByDescending(e => e.Date).ToList(); }
 
