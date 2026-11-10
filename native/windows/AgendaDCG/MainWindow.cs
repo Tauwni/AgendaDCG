@@ -35,7 +35,8 @@ public class MainWindow : Window
     {
         Current = this;
         Title = "Agenda DCG";
-        Width = 1180; Height = 780; MinWidth = 820; MinHeight = 560;
+        var area = SystemParameters.WorkArea;
+        Width = Math.Min(1180, area.Width * 0.94); Height = Math.Min(780, area.Height * 0.94); MinWidth = Math.Min(820, area.Width); MinHeight = Math.Min(560, area.Height);
         Background = Theme.Bg;
         FontFamily = Theme.Font;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
