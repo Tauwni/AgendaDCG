@@ -291,11 +291,11 @@ const addMin = (time, m) => { const [h, mm] = time.split(":").map(Number); const
 const nextDay = (date) => new Date(Date.parse(date + "T12:00Z") + 864e5).toISOString().slice(0, 10);
 
 async function buildIcs(p, origin) {
-  const [evs, sched] = await Promise.all([listAll(events()), readSchedule(origin)]);
+  const evs = await listAll(events());
   const done = new Set(p.done || []);
   const stamp = new Date().toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z";
   const out = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Agenda DCG//FR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
-    "X-WR-CALNAME:Agenda DCG", "X-WR-TIMEZONE:Europe/Paris", "REFRESH-INTERVAL;VALUE=DURATION:PT1H", "X-PUBLISHED-TTL:PT1H"];
+    "X-WR-CALNAME:Agenda DCG", "X-WR-TIMEZONE:Europe/Paris"];
   const vevent = (uid, date, time, end, summary, desc) => {
     out.push("BEGIN:VEVENT", `UID:${uid}@agendadcg`, `DTSTAMP:${stamp}`);
     if (time) out.push(`DTSTART;TZID=Europe/Paris:${icsDt(date, time)}`, `DTEND;TZID=Europe/Paris:${icsDt(date, end || addMin(time, 60))}`);
@@ -304,16 +304,8 @@ async function buildIcs(p, origin) {
     if (desc) out.push(`DESCRIPTION:${icsText(desc)}`);
     out.push("END:VEVENT");
   };
-  // Cours et créneaux de révision : 4 semaines en arrière, 26 en avant
-  const skip = new Set(sched.skip || []);
-  for (let i = -28; i < 182; i++) {
-    const date = new Date(Date.now() + i * 864e5).toISOString().slice(0, 10);
-    if ((sched.from && date < sched.from) || (sched.to && date > sched.to) || skip.has(date)) continue;
-    const wd = new Date(date + "T12:00Z").getUTCDay();
-    (sched.classes || []).forEach((c, n) => { if (c.day === wd) vevent(`edt-${date}-${n}`, date, c.start, c.end, c.title, c.subject); });
-  }
   for (const e of evs) {
-    if (!e.date) continue;
+    if (!e.date || e.date < new Date().toISOString().slice(0, 10)) continue;
     const label = KINDS[e.kind || "eval"]?.label || "";
     const summary = `${done.has(e.id) ? "✓ " : ""}${label && e.kind !== "cours" ? label + " · " : ""}${e.title}`;
     vevent(e.id, e.date, e.time, e.end, summary, [e.subject, e.notes || e.description].filter(Boolean).join("\n"));
@@ -350,7 +342,7 @@ export default async (req) => {
     if (!pid || !k || !safeEqual(k, calendarKey(pid))) return new Response("Lien invalide", { status: 403 });
     const p = await profiles().get(pid, { type: "json" });
     if (!p) return new Response("Compte introuvable", { status: 404 });
-    return new Response(await buildIcs(p, url.origin), { headers: { "content-type": "text/calendar; charset=utf-8", "cache-control": "no-cache" } });
+    return new Response(await buildIcs(p, url.origin), { headers: { "content-type": "text/calendar; charset=utf-8", "content-disposition": 'attachment; filename="agenda-dcg.ics"', "cache-control": "no-store" } });
   }
 
   if (!isAuthed(req)) return json({ error: "Non connecté" }, 401);

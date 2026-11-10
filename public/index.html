@@ -2238,11 +2238,11 @@ function renderSettings() {
     </div>
 
     <div class="section">
-      <h2>Calendrier de ton téléphone</h2>
+      <h2>Exporter vers ton calendrier</h2>
       <div class="group" id="calBox">
-        <div class="hint">Abonne ton Calendrier iPhone, Mac ou Google Agenda : cours, révisions, devoirs et évals s'y affichent et se mettent à jour tout seuls (ceux que tu as cochés sont marqués ✓). Le lien est personnel, ne le partage pas.</div>
+        <div class="hint">Importe les devoirs, évaluations et examens à venir dans le Calendrier iPhone/Mac ou Google Agenda (ceux que tu as cochés sont marqués ✓). C'est une copie : pas de mise à jour automatique, refais l'import si l'agenda change.</div>
         <a class="btn-row blue" id="calApple" href="#">Ajouter au Calendrier Apple</a>
-        <button class="btn-row" id="calCopy">Copier le lien (Google Agenda, Outlook…)</button>
+        <a class="btn-row" id="calCopy" href="#" download="agenda-dcg.ics">Télécharger le fichier (Google Agenda, Outlook…)</a>
       </div>
     </div>
 
@@ -2256,11 +2256,9 @@ function renderSettings() {
     </div>`;
 
   api("calendar-link").then(({ url }) => {
-    $("#calApple").href = url.replace(/^https?:/, "webcal:");
-    $("#calCopy").onclick = async () => {
-      try { await navigator.clipboard.writeText(url); toast("Lien copié : dans Google Agenda, « Autres agendas › À partir de l'URL »"); }
-      catch { prompt("Copie ce lien :", url); }
-    };
+    $("#calApple").href = url;
+    $("#calCopy").href = url;
+    $("#calCopy").onclick = () => toast("Puis dans Google Agenda : Paramètres › Importer et exporter › Importer");
   }).catch(() => { $("#calBox").innerHTML = `<div class="hint">Lien indisponible pour le moment.</div>`; });
 
   const savePrefs = async (next) => {
