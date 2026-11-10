@@ -25,6 +25,23 @@ export const profileId = (name) =>
 
 export const pushReady = () => !!(Netlify.env.get("PUSH_PUBLIC_KEY") && Netlify.env.get("PUSH_PRIVATE_KEY"));
 
+/** Compteurs pour le tableau de bord (totaux depuis le début + détail par jour sur 60 jours). */
+export async function bump(updates) {
+  try {
+    const store = getStore({ name: "config", consistency: "strong" });
+    const c = (await store.get("counters", { type: "json" })) || { since: new Date().toISOString(), totals: {}, days: {} };
+    const day = parisNow().iso;
+    c.days[day] ||= {};
+    for (const [k, n] of Object.entries(updates)) {
+      if (!n) continue;
+      c.totals[k] = (c.totals[k] || 0) + n;
+      c.days[day][k] = (c.days[day][k] || 0) + n;
+    }
+    for (const d of Object.keys(c.days).sort().slice(0, -60)) delete c.days[d];
+    await store.setJSON("counters", c);
+  } catch { /* les stats ne doivent jamais bloquer l'appli */ }
+}
+
 export async function sendPush(profile, payload) {
   if (!pushReady() || !profile.subs?.length) return 0;
   webpush.setVapidDetails("https://agendadcg.netlify.app", Netlify.env.get("PUSH_PUBLIC_KEY"), Netlify.env.get("PUSH_PRIVATE_KEY"));
@@ -37,6 +54,10 @@ export async function sendPush(profile, payload) {
     } catch (err) {
       if (err.statusCode === 404 || err.statusCode === 410) dead.add(sub.endpoint);
     }
+  }
+  if (sent) {
+    const type = { new: "push_new", daily: "push_daily", before: "push_before", weekly: "push_weekly" }[String(payload.tag || "").split("-")[0]] || "push_other";
+    await bump({ push: sent, [type]: sent });
   }
   if (dead.size) {
     const fresh = await profiles().get(profile.id, { type: "json" });

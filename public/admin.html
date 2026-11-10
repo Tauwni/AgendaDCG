@@ -20,6 +20,37 @@ h2 { font-size: 20px; margin: 34px 0 12px; letter-spacing: -.01em; }
 .card { background: var(--card); border-radius: 16px; padding: 18px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
 .stat b { display: block; font-size: 32px; letter-spacing: -.02em; }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (max-width: 860px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+.kpi { position: relative; overflow: hidden; border-radius: 18px; padding: 16px 16px 14px; color: #fff; background: linear-gradient(135deg, var(--c1), var(--c2)); box-shadow: 0 10px 24px -14px var(--c1); }
+.kpi b { display: block; font-size: 34px; letter-spacing: -.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.kpi span { font-size: 13px; opacity: .9; font-weight: 500; }
+.kpi small { display: block; font-size: 11.5px; opacity: .75; margin-top: 2px; }
+.kpi svg { position: absolute; right: 12px; top: 12px; width: 22px; height: 22px; opacity: .55; }
+.grid2 { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-top: 12px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+.ctitle { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.legend { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+.legend i { width: 10px; height: 10px; border-radius: 3px; margin-left: 8px; }
+.hbar { display: grid; grid-template-columns: 54px 1fr 28px; align-items: center; gap: 8px; margin: 7px 0; font-size: 13px; }
+.hbar div { height: 10px; border-radius: 5px; background: var(--bg); overflow: hidden; }
+.hbar div i { display: block; height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--accent), #ff7a59); }
+.hbar b { text-align: right; }
+.donut { display: flex; align-items: center; gap: 16px; }
+.donut .pie { width: 120px; height: 120px; border-radius: 50%; flex: none; position: relative; }
+.donut .pie::after { content: attr(data-n); position: absolute; inset: 22px; border-radius: 50%; background: var(--card); display: grid; place-items: center; font-weight: 700; font-size: 24px; }
+.donut ul { list-style: none; padding: 0; margin: 0; font-size: 13px; }
+.donut li { display: flex; align-items: center; gap: 7px; margin: 4px 0; }
+.donut li i { width: 9px; height: 9px; border-radius: 50%; }
+.ringwrap { display: grid; place-items: center; text-align: center; padding: 6px 0; }
+.ringwrap p { margin: 8px 0 0; color: var(--text2); font-size: 13px; }
+.podium { display: flex; align-items: flex-end; justify-content: center; gap: 10px; height: 150px; }
+.podium div { flex: 1; max-width: 90px; text-align: center; font-size: 13px; }
+.podium div i { display: grid; place-items: end center; border-radius: 10px 10px 4px 4px; color: #fff; font-style: normal; font-weight: 800; font-size: 20px; padding-bottom: 6px; margin-top: 6px; }
+.facts p { margin: 0 0 10px; font-size: 14px; }
+.facts b { color: var(--accent); }
+.pushes div { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: .5px solid var(--line); font-size: 14px; }
+@media (max-width: 860px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
 .stat span { color: var(--text2); font-size: 13px; }
 .bars { display: flex; align-items: flex-end; gap: 8px; height: 140px; padding-top: 10px; }
 .bars div { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; font-size: 11px; color: var(--text2); }
@@ -69,12 +100,27 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 <div id="app" class="wrap hidden">
   <header><img src="/icons/icon-192.png" alt=""><h1>Tableau de bord</h1><a class="btn" href="/" target="_blank">Ouvrir l'agenda</a><button id="logout">Se déconnecter</button></header>
 
-  <div class="stats" id="stats"></div>
+  <p class="note" id="since"></p>
+  <div class="kpis" id="kpis"></div>
 
-  <div class="split" style="margin-top:12px">
-    <div class="card"><b>Événements ajoutés par semaine</b><div class="bars" id="weeks"></div></div>
-    <div class="card kinds"><b>Par type</b><div id="kinds" style="margin-top:6px"></div></div>
+  <div class="grid2">
+    <div class="card"><div class="ctitle"><b>Activité des 14 derniers jours</b><span class="legend"><i style="background:var(--accent)"></i>Connexions<i style="background:var(--blue)"></i>Ajouts<i style="background:var(--purple)"></i>Notifications</span></div><div id="activity"></div></div>
+    <div class="card"><div class="ctitle"><b>Devoirs faits</b></div><div id="ring"></div></div>
   </div>
+
+  <div class="grid3">
+    <div class="card"><div class="ctitle"><b>Par type</b></div><div id="donut"></div></div>
+    <div class="card"><div class="ctitle"><b>Par matière</b></div><div id="subjects"></div></div>
+    <div class="card"><div class="ctitle"><b>Jour des échéances</b></div><div class="bars" id="weekdays"></div></div>
+  </div>
+
+  <div class="grid3">
+    <div class="card"><div class="ctitle"><b>Notifications envoyées</b></div><div id="pushes"></div></div>
+    <div class="card"><div class="ctitle"><b>Podium des contributeurs</b></div><div id="podium"></div></div>
+    <div class="card"><div class="ctitle"><b>Le saviez-vous ?</b></div><div id="facts"></div></div>
+  </div>
+
+  <div class="card" style="margin-top:12px"><div class="ctitle"><b>Événements ajoutés par semaine</b></div><div class="bars" id="weeks"></div></div>
 
   <h2>Utilisateurs</h2>
   <div class="card scroll"><table><thead><tr><th>Prénom</th><th>Dernière visite</th><th>Appareils</th><th>Ajouts</th><th>Notes</th><th>Rappels</th><th></th></tr></thead><tbody id="people"></tbody></table></div>
@@ -133,13 +179,7 @@ async function start() {
   const s = await api("stats");
   $("#login").classList.add("hidden");
   $("#app").classList.remove("hidden");
-  $("#stats").innerHTML = [
-    [s.accounts, "comptes créés"], [s.active1, "actifs aujourd'hui"], [s.active7, "actifs cette semaine"],
-    [s.events, "événements au total"], [s.upcoming, "à venir"], [s.attachments, "sujets joints"], [s.pushDevices, "appareils avec rappels"],
-  ].map(([n, l]) => `<div class="card stat"><b>${n}</b><span>${l}</span></div>`).join("");
-  const max = Math.max(1, ...s.weeks.map((w) => w.n));
-  $("#weeks").innerHTML = s.weeks.map((w) => `<div><b>${w.n || ""}</b><i style="height:${(w.n / max) * 100}%"></i>${new Date(w.week).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</div>`).join("");
-  $("#kinds").innerHTML = s.byKind.map((k) => `<div><span>${esc(k.kind)}</span><b>${k.n}</b></div>`).join("") || `<p class="note">Aucun événement</p>`;
+  renderStats(s);
   $("#people").innerHTML = s.people.map((p) => {
     const fresh = p.lastSeenAt && Date.now() - Date.parse(p.lastSeenAt) < 7 * 864e5;
     return `<tr><td><span class="dot" style="background:${fresh ? "var(--green)" : "var(--line)"}"></span><b>${esc(p.name)}</b>${p.locked ? ' <span class="tag" style="color:var(--accent)">bloqué</span>' : ""}</td>
@@ -155,6 +195,88 @@ async function start() {
   });
   schedule = await api("schedule");
   drawSchedule();
+}
+
+const ICONS = {
+  users: '<path d="M16 19v-1a4 4 0 00-4-4H7a4 4 0 00-4 4v1"/><circle cx="9.5" cy="7.5" r="3.5"/><path d="M21 19v-1a4 4 0 00-3-3.9M16 4.1a3.5 3.5 0 010 6.8"/>',
+  pulse: '<path d="M3 12h4l3 8 4-16 3 8h4"/>', pen: '<path d="M15.5 4.5l4 4L9 19l-5 1 1-5z"/>', check: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.8"/>',
+  bell: '<path d="M6 8.5a6 6 0 0112 0c0 7 3 8.5 3 8.5H3s3-1.5 3-8.5M10 20.5a2 2 0 004 0"/>', clip: '<path d="M21.4 11.1l-9.2 9.2a6 6 0 01-8.5-8.5l9.2-9.2a4 4 0 015.7 5.7l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5"/>',
+  book: '<path d="M4 5.5A1.5 1.5 0 015.5 4H10a2 2 0 012 2v14a1.5 1.5 0 00-1.5-1.5h-5A1.5 1.5 0 014 17z"/><path d="M20 5.5A1.5 1.5 0 0018.5 4H14a2 2 0 00-2 2v14a1.5 1.5 0 011.5-1.5h5a1.5 1.5 0 001.5-1.5z"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/>',
+};
+const ico = (k) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[k]}</svg>`;
+const fmtSize = (n) => n > 1073741824 ? (n / 1073741824).toFixed(2).replace(".", ",") + " Go" : n > 1048576 ? Math.round(n / 1048576) + " Mo" : Math.max(1, Math.round(n / 1024)) + " Ko";
+const PALETTE = ["#ff3b30", "#ff9500", "#ffcc00", "#34c759", "#007aff", "#af52de", "#a2845e"];
+
+function renderStats(s) {
+  const t = s.totals || {};
+  $("#since").textContent = s.since ? `Compteurs depuis le ${new Date(s.since).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}` : "Les compteurs démarrent maintenant.";
+  const kpi = (n, label, sub, icon, c1, c2) => `<div class="kpi" style="--c1:${c1};--c2:${c2}">${ico(icon)}<b>${n}</b><span>${label}</span>${sub ? `<small>${sub}</small>` : ""}</div>`;
+  const kind = (k) => (s.byKind.find((x) => x.kind === k) || { n: 0 }).n;
+  $("#kpis").innerHTML = [
+    kpi(s.accounts, "comptes", `${s.active7} actifs cette semaine`, "users", "#ff3b30", "#ff7a59"),
+    kpi(s.active1, "actifs aujourd'hui", `${t.logins || 0} connexions au total`, "pulse", "#ff9500", "#ffc04d"),
+    kpi(kind("Devoir"), "devoirs notés", `${t.created_devoir || 0} ajoutés depuis le début`, "pen", "#af52de", "#d78bff"),
+    kpi(kind("Évaluation") + kind("Examen blanc"), "évals et examens", `${kind("Exercice")} exercices`, "key", "#007aff", "#5ac8fa"),
+    kpi(s.doneTotal, "cases « fait » cochées", `${t.done || 0} depuis le début`, "check", "#34c759", "#7ee39a"),
+    kpi(t.push || 0, "notifications envoyées", `${s.pushDevices} appareils abonnés`, "bell", "#5856d6", "#8e8cf0"),
+    kpi(s.attachments, "sujets joints", `${s.library.files} PDF de cours`, "clip", "#a2845e", "#c9a97f"),
+    kpi(s.library.chapters, "chapitres", fmtSize(s.library.bytes) + " de cours", "book", "#1d1d1f", "#48484a"),
+  ].join("");
+
+  // Courbes d'activité (SVG)
+  const W = 640, H = 170, P = 24, days = s.days14;
+  const series = [["logins", "var(--accent)"], ["created", "var(--blue)"], ["push", "var(--purple)"]];
+  const max = Math.max(1, ...days.flatMap((d) => series.map(([k]) => d[k] || 0)));
+  const x = (i) => P + (i * (W - 2 * P)) / (days.length - 1), y = (v) => H - P - (v / max) * (H - 2 * P);
+  const paths = series.map(([k, c]) => {
+    const pts = days.map((d, i) => `${x(i).toFixed(1)},${y(d[k] || 0).toFixed(1)}`);
+    return `<path d="M${pts.join(" L")} L${x(days.length - 1)},${H - P} L${P},${H - P} Z" fill="${c}" opacity=".08"/><polyline points="${pts.join(" ")}" fill="none" stroke="${c}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`
+      + days.map((d, i) => d[k] ? `<circle cx="${x(i)}" cy="${y(d[k])}" r="3" fill="${c}"><title>${d[k]}</title></circle>` : "").join("");
+  }).join("");
+  const labels = days.map((d, i) => i % 2 ? "" : `<text x="${x(i)}" y="${H - 4}" text-anchor="middle" font-size="10" fill="currentColor" opacity=".55">${new Date(d.day + "T12:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</text>`).join("");
+  $("#activity").innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="color:var(--text)">${[0, .5, 1].map((f) => `<line x1="${P}" x2="${W - P}" y1="${y(max * f)}" y2="${y(max * f)}" stroke="currentColor" opacity=".08"/>`).join("")}${paths}${labels}</svg>`;
+
+  // Anneau « fait »
+  const pct = s.completion ?? 0, R = 52, C = 2 * Math.PI * R;
+  $("#ring").innerHTML = `<div class="ringwrap"><svg width="150" height="150" viewBox="0 0 150 150"><circle cx="75" cy="75" r="${R}" fill="none" stroke="var(--bg)" stroke-width="14"/><circle cx="75" cy="75" r="${R}" fill="none" stroke="var(--green)" stroke-width="14" stroke-linecap="round" stroke-dasharray="${(C * pct) / 100} ${C}" ${pct ? "" : 'opacity="0"'} transform="rotate(-90 75 75)"/><text x="75" y="83" text-anchor="middle" font-size="28" font-weight="800" fill="currentColor">${s.completion === null ? "–" : pct + "%"}</text></svg>
+    <p>des devoirs et évals des 60 derniers jours<br>ont été cochés « fait »</p></div>`;
+
+  // Donut par type
+  const total = s.byKind.reduce((n, k) => n + k.n, 0) || 1;
+  let acc = 0;
+  const stops = s.byKind.map((k, i) => { const a = acc; acc += (k.n / total) * 360; return `${PALETTE[i % 7]} ${a}deg ${acc}deg`; }).join(",");
+  $("#donut").innerHTML = `<div class="donut"><div class="pie" data-n="${s.events}" style="background:conic-gradient(${stops || "var(--bg) 0 360deg"})"></div><ul>${s.byKind.map((k, i) => `<li><i style="background:${PALETTE[i % 7]}"></i>${esc(k.kind)} <b style="margin-left:auto">${k.n}</b></li>`).join("")}</ul></div>`;
+
+  // Matières
+  const smax = Math.max(1, ...s.bySubject.map((x) => x.n));
+  $("#subjects").innerHTML = s.bySubject.slice(0, 7).map((x) => `<div class="hbar"><span>${esc(x.subject)}</span><div><i style="width:${(x.n / smax) * 100}%"></i></div><b>${x.n}</b></div>`).join("") || `<p class="note">Aucun événement</p>`;
+
+  // Jours de la semaine
+  const order = [1, 2, 3, 4, 5, 6, 0], wmax = Math.max(1, ...s.byWeekday);
+  $("#weekdays").innerHTML = order.map((d) => `<div><b>${s.byWeekday[d] || ""}</b><i style="height:${(s.byWeekday[d] / wmax) * 100}%;background:var(--blue)"></i>${DAYS[d].slice(0, 3)}.</div>`).join("");
+
+  // Notifications par type
+  const pt = [["push_new", "Nouvelle évaluation"], ["push_daily", "Résumé du matin"], ["push_before", "Rappels avant échéance"], ["push_weekly", "Résumé du dimanche"], ["push_other", "Tests"]];
+  $("#pushes").innerHTML = `<div class="pushes">${pt.map(([k, l]) => `<div><span>${l}</span><b>${t[k] || 0}</b></div>`).join("")}</div>`;
+
+  // Podium
+  const heights = [110, 80, 60], colors = ["#ffcc00", "#c7c7cc", "#d4a373"], seat = [1, 0, 2];
+  $("#podium").innerHTML = s.top.length ? `<div class="podium">${seat.filter((i) => s.top[i]).map((i) => `<div><b>${esc(s.top[i].name)}</b><br><span class="note">${s.top[i].n} ajouts</span><i style="height:${heights[i]}px;background:${colors[i]}">${i + 1}</i></div>`).join("")}</div>` : `<p class="note">Personne n'a encore rien ajouté.</p>`;
+
+  // Le saviez-vous
+  const busyDay = s.byWeekday.indexOf(Math.max(...s.byWeekday));
+  const facts = [
+    s.busiestWeek && `La semaine la plus chargée qui arrive : celle du <b>${new Date(s.busiestWeek.week + "T12:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</b>, avec ${s.busiestWeek.n} échéances.`,
+    s.deadlines && `Le jour préféré des profs pour les échéances : le <b>${DAYS[busyDay].toLowerCase()}</b>.`,
+    s.bySubject[0] && `La matière qui donne le plus de travail : <b>${esc(s.bySubject[0].subject)}</b> (${s.bySubject[0].n}).`,
+    s.accounts && `En moyenne, <b>${(s.events / s.accounts).toFixed(1).replace(".", ",")}</b> événements par élève.`,
+    (t.bytes || 0) > 0 && `<b>${fmtSize(t.bytes)}</b> de PDF envoyés depuis le début.`,
+  ].filter(Boolean);
+  $("#facts").innerHTML = `<div class="facts">${facts.map((f) => `<p>${f}</p>`).join("") || '<p class="note">Pas encore assez de données.</p>'}</div>`;
+
+  const max2 = Math.max(1, ...s.weeks.map((w) => w.n));
+  $("#weeks").innerHTML = s.weeks.map((w) => `<div><b>${w.n || ""}</b><i style="height:${(w.n / max2) * 100}%"></i>${new Date(w.week).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</div>`).join("");
 }
 
 function drawSchedule() {

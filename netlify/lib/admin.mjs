@@ -71,7 +71,9 @@ function weekKey(iso) {
 }
 
 async function stats() {
-  const [ps, evs] = await Promise.all([listAll(profiles()), listAll(events())]);
+  const chapterStore = getStore({ name: "chapters", consistency: "strong" });
+  const [ps, evs, chs, counters] = await Promise.all([listAll(profiles()), listAll(events()), listAll(chapterStore), config().get("counters", { type: "json" })]);
+  const c = counters || { since: null, totals: {}, days: {} };
   const now = Date.now();
   const since = (t, days) => t && now - Date.parse(t) < days * 864e5;
   const today = new Date().toISOString().slice(0, 10);
@@ -82,7 +84,35 @@ async function stats() {
   for (const e of evs) { const k = weekKey(e.createdAt || e.updatedAt || new Date().toISOString()); if (k in weeks) weeks[k]++; }
   const authors = {};
   for (const e of evs) if (e.createdBy) authors[e.createdBy] = (authors[e.createdBy] || 0) + 1;
+  // Taux de « fait » sur les devoirs/évals passés depuis 60 jours (part des comptes qui les ont cochés)
+  const deadlineKinds = new Set(["eval", "examen", "devoir", "exercice"]);
+  const deadlines = evs.filter((e) => deadlineKinds.has(e.kind || "eval"));
+  const past = deadlines.filter((e) => e.date < today && Date.parse(e.date) > now - 60 * 864e5);
+  const doneSets = ps.map((p) => new Set(p.done || []));
+  const completion = past.length && ps.length ? Math.round(100 * past.reduce((sum, e) => sum + doneSets.filter((d) => d.has(e.id)).length / ps.length, 0) / past.length) : null;
+  const bySubject = {};
+  for (const e of evs) { const k = (e.subject || "Sans matière").split(" · ")[0]; bySubject[k] = (bySubject[k] || 0) + 1; }
+  const byWeekday = [0, 0, 0, 0, 0, 0, 0];
+  for (const e of deadlines) byWeekday[new Date(e.date + "T12:00Z").getUTCDay()]++;
+  const upcomingWeeks = {};
+  for (const e of deadlines.filter((e) => e.date >= today)) { const k = weekKey(e.date + "T12:00Z"); upcomingWeeks[k] = (upcomingWeeks[k] || 0) + 1; }
+  const busiest = Object.entries(upcomingWeeks).sort((a, b) => b[1] - a[1])[0];
+  const files = chs.flatMap((ch) => Object.values(ch.files || {}).filter(Boolean));
+  const days14 = [];
+  for (let i = 13; i >= 0; i--) { const d = new Date(now - i * 864e5).toISOString().slice(0, 10); days14.push({ day: d, ...(c.days[d] || {}) }); }
+  const top = Object.entries(authors).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([name, n]) => ({ name, n }));
   return {
+    since: c.since,
+    totals: c.totals,
+    days14,
+    completion,
+    doneTotal: ps.reduce((n, p) => n + (p.done || []).length, 0),
+    deadlines: deadlines.length,
+    bySubject: Object.entries(bySubject).map(([subject, n]) => ({ subject, n })).sort((a, b) => b.n - a.n),
+    byWeekday,
+    busiestWeek: busiest ? { week: busiest[0], n: busiest[1] } : null,
+    library: { chapters: chs.length, files: files.length, bytes: files.reduce((n, f) => n + (f.size || 0), 0) },
+    top,
     accounts: ps.length,
     active1: ps.filter((p) => since(p.lastSeenAt, 1)).length,
     active7: ps.filter((p) => since(p.lastSeenAt, 7)).length,

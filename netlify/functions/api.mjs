@@ -1,6 +1,7 @@
 import { getStore } from "@netlify/blobs";
 import { createHmac, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import { handleAdmin, readSchedule } from "../lib/admin.mjs";
+import { bump } from "../lib/shared.mjs";
 import { KINDS, events, profiles, listAll, profileId, pushReady, sendPush, frDate, describe } from "../lib/shared.mjs";
 
 const COOKIE = "agenda_session";
@@ -167,6 +168,7 @@ async function eventAttachment(step, body, by) {
   await pdfs().setJSON(`r2:${key}`, { name, eventId: ev.id });
   const file = { key, name, size: Number(head.headers.get("content-length")) || 0, uploadedBy: by, uploadedAt: new Date().toISOString() };
   const updated = stamp({ ...ev, attachments: [...(ev.attachments || []), file] }, by, "a joint un fichier");
+  await bump({ attachments: 1, bytes: file.size });
   await events().setJSON(ev.id, updated);
   return json(updated, 201);
 }
@@ -210,6 +212,7 @@ async function handleProfile(req, url, id, method) {
         failed: 0, lockedUntil: 0, done: [], grades: [], prefs: readPrefs({}), subs: [],
       };
       await profiles().setJSON(pid, profile);
+      await bump({ signups: 1 });
     } else {
       if (profile.lockedUntil > Date.now()) {
         const min = Math.ceil((profile.lockedUntil - Date.now()) / 60000);
@@ -225,6 +228,7 @@ async function handleProfile(req, url, id, method) {
       if (profile.failed) { profile.failed = 0; await profiles().setJSON(pid, profile); }
     }
     cookies.push(cookie(PROFILE_COOKIE, encodeURIComponent(`${pid}.${profileToken(pid)}`), COOKIE_AGE));
+    await bump({ logins: 1 });
     return json(publicProfile(profile), 200, cookies);
   }
 
@@ -255,6 +259,7 @@ async function handleProfile(req, url, id, method) {
     const eid = String(body.event || "");
     const done = new Set(profile.done || []);
     if (body.done) done.add(eid); else done.delete(eid);
+    if (body.done) await bump({ done: 1 });
     profile.done = [...done].slice(-3000);
   } else if (id === "grades" && method === "PUT") {
     const { grades, error } = readGrades(body.grades);
@@ -333,6 +338,7 @@ export default async (req) => {
         history: [{ by, at: now, action: `a créé ${KINDS[ev.kind].article}` }],
       };
       await events().setJSON(full.id, full);
+      await bump({ created: 1, [`created_${full.kind}`]: 1 });
       if (KINDS[full.kind].deadline) await notifyNewEvent(full, currentProfileId(req)).catch(() => {});
       return json(full, 201);
     }
@@ -358,6 +364,7 @@ export default async (req) => {
       if (!cleanName(url.searchParams.get("by"))) return json({ error: "Ton nom est obligatoire" }, 400);
       await Promise.all((existing.attachments || []).map((f) => deleteR2(f.key).catch(() => {})));
       await events().delete(id);
+      await bump({ deleted: 1 });
       return json({ ok: true });
     }
   }
@@ -449,6 +456,7 @@ export default async (req) => {
       const previous = ch.files[body.slot];
       const file = { key, name, size: Number(head.headers.get("content-length")) || 0, uploadedBy: by, uploadedAt: new Date().toISOString() };
       const updated = stamp({ ...ch, files: { ...ch.files, [body.slot]: file } }, by, `a ${previous ? "remplacé" : "ajouté"} ${SLOTS[body.slot]}`);
+      await bump({ pdfs: 1, bytes: file.size });
       await chapters().setJSON(ch.id, updated);
       if (previous) await deleteR2(previous.key);
       return json(updated, 201);
