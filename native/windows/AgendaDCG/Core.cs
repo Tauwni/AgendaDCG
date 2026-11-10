@@ -356,7 +356,7 @@ public class Store
         public string Label => $"{Subject.Split(" · ")[0]} · {Chapter?.Title ?? "reprendre le cours"}";
     }
     public List<string> RevSubjects() => (Schedule?.Classes ?? new()).Where(c => c.Kind != "revision").Select(c => c.Subject).Distinct().ToList();
-    public bool HasLevels => (Profile?.Levels?.Count ?? 0) > 0;
+    public bool HasLevels => Profile?.Levels?.Keys.Any(k => k != "__mode") ?? false;
     public int? LevelOf(string s) { var l = Profile?.Levels; if (l == null) return null; foreach (var kv in l) if (SameSubject(kv.Key, s)) return kv.Value; return null; }
     public static string LevelWord(int n) => n <= 3 ? "à reprendre" : n <= 5 ? "fragile" : n <= 7 ? "correct" : "solide";
     static DateTime Saturday(string day) { var d = Data.Parse(day); var wd = (int)d.DayOfWeek; return d.AddDays(wd == 0 ? -1 : 6 - wd); }
@@ -390,13 +390,23 @@ public class Store
         }
         return items.OrderByDescending(x => x.Score).ToList();
     }
+    /// Méthode : "sujets" (révision le matin, sujets des mêmes chapitres le soir) ou "revision" (révision seule).
+    public string AdvisedMode { get { var ls = RevSubjects().Select(s => (double)(LevelOf(s) ?? 5)).ToList(); return (ls.Count == 0 ? 5 : ls.Average()) < 5 ? "revision" : "sujets"; } }
+    public string RevMode => (Profile?.Levels != null && Profile.Levels.TryGetValue("__mode", out var m)) ? (m == 2 ? "sujets" : "revision") : AdvisedMode;
+    (int day, int part) RevSlot(AgendaEvent e)
+    {
+        var same = (Schedule?.On(e.Date) ?? new()).Where(x => x.Revision).ToList();
+        return (Data.Parse(e.Date).DayOfWeek == DayOfWeek.Sunday ? 1 : 0, Math.Max(0, same.FindIndex(x => x.Id == e.Id)));
+    }
+    public bool IsSujetSlot(AgendaEvent e) => e.Revision && RevMode == "sujets" && RevSlot(e).part == 1;
+    public string RevTitle(AgendaEvent e) => !e.Revision ? e.Title : IsSujetSlot(e) ? "Sujets d'entraînement" : "Révision des chapitres";
     public List<RevisionPick> RevisionFor(AgendaEvent e)
     {
         if (!e.Revision || !HasLevels) return new();
-        var sat = Saturday(e.Date);
-        var slots = new[] { Data.Iso(sat), Data.Iso(sat.AddDays(1)) }.SelectMany(k => (Schedule?.On(k) ?? new()).Where(x => x.Revision)).ToList();
-        var i = slots.FindIndex(x => x.Id == e.Id); if (i < 0) return new();
-        return RevisionPicks(e.Date).Skip(i * 2).Take(2).ToList();
+        var all = RevisionPicks(e.Date);
+        if (RevMode == "sujets") all = all.Where(p => p.Chapter?.Files.GetValueOrDefault("sujet") != null).Concat(all.Where(p => p.Chapter?.Files.GetValueOrDefault("sujet") == null)).ToList();
+        var s = RevSlot(e); var block = RevMode == "sujets" ? s.day : s.day * 2 + s.part;
+        return all.Skip(block * 2).Take(2).ToList();
     }
     public async Task SaveLevels(Dictionary<string, int> levels)
     {

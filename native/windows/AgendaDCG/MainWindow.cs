@@ -443,12 +443,12 @@ public class MainWindow : Window
                 var e = timed[k]; var ev = e;
                 var a = Math.Max(Min(e.Time!), StartH * 60); var b = Math.Min(Math.Max(e.End != null ? Min(e.End) : a + 60, a + 30), EndH * 60);
                 var inner = new StackPanel();
-                var tt = new TextBlock { Text = e.Title, FontSize = 12, FontWeight = FontWeights.SemiBold, Foreground = Theme.Text, TextWrapping = TextWrapping.Wrap };
+                var tt = new TextBlock { Text = S.RevTitle(e), FontSize = 12, FontWeight = FontWeights.SemiBold, Foreground = Theme.Text, TextWrapping = TextWrapping.Wrap };
                 if (S.IsDone(e)) tt.TextDecorations = TextDecorations.Strikethrough;
                 inner.Children.Add(tt);
                 inner.Children.Add(T((e.TimeLabel ?? "") + (e.IsClass ? "" : " · " + Data.KindLabel(e.Kind)), 11, null, Theme.Text2));
                 if (e.Revision && !S.HasLevels) inner.Children.Add(T("✨ Clique pour personnaliser", 11, FontWeights.SemiBold));
-                foreach (var p in S.RevisionFor(e)) { var pt = T("📖 " + p.Label, 11, FontWeights.SemiBold); pt.TextTrimming = TextTrimming.CharacterEllipsis; inner.Children.Add(new Border { Child = pt, Background = Theme.Card, CornerRadius = new CornerRadius(4), Padding = new Thickness(4, 2, 4, 2), Margin = new Thickness(0, 3, 0, 0) }); }
+                foreach (var p in S.RevisionFor(e)) { var pt = T((S.IsSujetSlot(e) ? "✏️ " : "📖 ") + p.Label, 11, FontWeights.SemiBold); pt.TextTrimming = TextTrimming.CharacterEllipsis; inner.Children.Add(new Border { Child = pt, Background = Theme.Card, CornerRadius = new CornerRadius(4), Padding = new Thickness(4, 2, 4, 2), Margin = new Thickness(0, 3, 0, 0) }); }
                 if (e.IsClass)
                     foreach (var task in insideAll.Where(x => Store.SameSubject(x.Subject, e.Subject)))
                     {

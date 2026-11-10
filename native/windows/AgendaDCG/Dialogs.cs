@@ -67,7 +67,7 @@ public static class Dialogs
         Window? w = null;
         var body = new StackPanel();
         body.Children.Add(H(8, Icon(Data.KindGlyph("cours"), 15, Theme.Of(e.Color)), T(e.Revision ? "Révision · créneau conseillé" : "Cours · emploi du temps", 14, FontWeights.SemiBold, Theme.Of(e.Color))));
-        var title = T(e.Title, 24, FontWeights.Bold); title.Margin = new Thickness(0, 8, 0, 8); body.Children.Add(title);
+        var title = T(S.RevTitle(e), 24, FontWeights.Bold); title.Margin = new Thickness(0, 8, 0, 8); body.Children.Add(title);
         body.Children.Add(T($"{Data.Cap(Data.LongDate(e.Date))} · {e.TimeLabel}", 14, null, Theme.Text2));
         body.Children.Add(T(e.Subject ?? "", 14, null, Theme.Text2));
         if (e.Revision)
@@ -75,9 +75,39 @@ public static class Dialogs
             if (S.HasLevels)
             {
                 var h = T("Au programme de ce créneau", 16, FontWeights.Bold); h.Margin = new Thickness(0, 16, 0, 6); body.Children.Add(h);
+                var mode = T($"Ta méthode : {(S.RevMode == "sujets" ? "révision le matin, sujets le soir" : "révision seule")}{(S.RevMode == S.AdvisedMode ? " (conseillée pour toi)" : "")}", 12, null, Theme.Text2); mode.Margin = new Thickness(0, 0, 0, 8); body.Children.Add(mode);
                 var picks = S.RevisionFor(e);
+                void Open(PdfFile f) => _ = Try(async () => { var p = await S.Download(f); Process.Start(new ProcessStartInfo(p) { UseShellExecute = true }); });
+                UIElement Row(Store.RevisionPick p) { var r = V(1, T(p.Label, 14, FontWeights.SemiBold), T(p.Why, 12, null, Theme.Text2)); r.Margin = new Thickness(0, 0, 0, 8); return r; }
+                TextBlock Para(string s) { var x = T(s, 13); x.TextWrapping = TextWrapping.Wrap; x.Margin = new Thickness(0, 0, 0, 8); return x; }
                 if (picks.Count == 0) body.Children.Add(T("Rien de prioritaire : reprends librement un chapitre.", 13, null, Theme.Text2));
-                foreach (var p in picks) { var r = V(1, T(p.Label, 14, FontWeights.SemiBold), T(p.Why, 12, null, Theme.Text2)); r.Margin = new Thickness(0, 0, 0, 8); body.Children.Add(r); }
+                else if (!S.IsSujetSlot(e))
+                {
+                    body.Children.Add(Para("Relis le cours, fais-toi une fiche et récite sans regarder." + (S.RevMode == "sujets" ? " En fin d'après-midi, tu feras les sujets de ces chapitres." : "")));
+                    foreach (var p in picks)
+                    {
+                        body.Children.Add(Row(p));
+                        if (p.Chapter?.Files.GetValueOrDefault("cours") is { } f) { var fb = Btn("Fiche de cours", () => Open(f)); fb.HorizontalAlignment = HorizontalAlignment.Left; fb.Margin = new Thickness(0, 0, 0, 10); body.Children.Add(fb); }
+                    }
+                }
+                else
+                {
+                    body.Children.Add(Para("Les sujets des chapitres révisés ce matin. Fais-les sans regarder la correction."));
+                    var with = picks.Where(p => p.Chapter?.Files.GetValueOrDefault("sujet") != null).ToList();
+                    var without = picks.Where(p => p.Chapter?.Files.GetValueOrDefault("sujet") == null).ToList();
+                    foreach (var p in with)
+                    {
+                        var sujet = p.Chapter!.Files["sujet"]!; var corr = p.Chapter.Files.GetValueOrDefault("corrige");
+                        var row = H(8, T(p.Label, 14, FontWeights.SemiBold), Btn("Sujet", () => Open(sujet), primary: true));
+                        if (corr != null) row.Children.Add(Btn("Voir la correction", () => { if (Confirm("Tu es sûr de vouloir voir la correction ? Essaie d'abord de finir le sujet seul.")) Open(corr); }));
+                        row.Margin = new Thickness(0, 0, 0, 8); body.Children.Add(row);
+                    }
+                    if (without.Count > 0)
+                    {
+                        body.Children.Add(Para((with.Count == 0 ? "Pas de sujet en ligne pour ces chapitres." : "Pas de sujet pour l'autre chapitre.") + " Sinon voici des chapitres à réviser :"));
+                        foreach (var p in without) body.Children.Add(Row(p));
+                    }
+                }
             }
             var lb = Btn(S.HasLevels ? "Modifier mon niveau par matière" : "Personnaliser mes révisions (1 min)", () => { w?.Close(); LevelsSurvey(); }, primary: !S.HasLevels);
             lb.HorizontalAlignment = HorizontalAlignment.Left; lb.Margin = new Thickness(0, 10, 0, 0); body.Children.Add(lb);
@@ -104,19 +134,27 @@ public static class Dialogs
         var body = new StackPanel();
         var intro = T("Note de 1 à 10 ton niveau dans chaque matière. Les créneaux de révision du week-end te proposeront plus souvent tes matières faibles, en plus des chapitres de tes prochaines évals. Personne d'autre ne voit tes réponses.", 13, null, Theme.Text2);
         intro.TextWrapping = TextWrapping.Wrap; intro.Margin = new Thickness(0, 0, 0, 12); body.Children.Add(intro);
+        var curMode = S.Profile?.Levels?.GetValueOrDefault("__mode") is int m && m > 0 ? m : (S.AdvisedMode == "sujets" ? 2 : 1);
+        var rbS = new RadioButton { Content = "Révision le matin, sujets en fin d'après-midi", IsChecked = curMode == 2, Foreground = Theme.Text, Margin = new Thickness(0, 0, 0, 4) };
+        var rbR = new RadioButton { Content = "Révision seule", IsChecked = curMode == 1, Foreground = Theme.Text, Margin = new Thickness(0, 0, 0, 6) };
+        body.Children.Add(T("Ma méthode le week-end", 14, FontWeights.SemiBold)); body.Children.Add(rbS); body.Children.Add(rbR);
+        var advice = T("", 12, null, Theme.Text2); advice.TextWrapping = TextWrapping.Wrap; advice.Margin = new Thickness(0, 0, 0, 12); body.Children.Add(advice);
         var sliders = new Dictionary<string, Slider>();
+        void Advise() { var avg = sliders.Count == 0 ? 5 : sliders.Values.Average(x => x.Value); advice.Text = avg < 5 ? "Conseil pour toi : la révision seule, le temps de consolider tes bases (moyenne de tes niveaux sous 5/10)." : "Conseil pour toi : révision le matin et sujets le soir, pour t'entraîner comme le jour de l'éval."; }
         foreach (var s in S.RevSubjects())
         {
             var v = S.LevelOf(s) ?? 5;
             var val = T($"{v}/10 · {Store.LevelWord(v)}", 13, null, Theme.Text2);
             var sl = new Slider { Minimum = 1, Maximum = 10, Value = v, IsSnapToTickEnabled = true, TickFrequency = 1, Margin = new Thickness(0, 4, 0, 12) };
-            sl.ValueChanged += (_, _) => val.Text = $"{(int)sl.Value}/10 · {Store.LevelWord((int)sl.Value)}";
+            sl.ValueChanged += (_, _) => { val.Text = $"{(int)sl.Value}/10 · {Store.LevelWord((int)sl.Value)}"; Advise(); };
             var head = new DockPanel(); DockPanel.SetDock(val, Dock.Right); head.Children.Add(val); head.Children.Add(T(s, 14, FontWeights.SemiBold));
             body.Children.Add(head); body.Children.Add(sl); sliders[s] = sl;
         }
+        Advise();
         var save = Btn("Enregistrer", async () =>
         {
             var levels = sliders.ToDictionary(kv => kv.Key, kv => (int)kv.Value.Value);
+            levels["__mode"] = rbS.IsChecked == true ? 2 : 1;
             if (await Try(() => S.SaveLevels(levels))) { w!.Close(); Toast("Révisions personnalisées ✓"); }
         }, primary: true);
         save.HorizontalAlignment = HorizontalAlignment.Right; body.Children.Add(save);

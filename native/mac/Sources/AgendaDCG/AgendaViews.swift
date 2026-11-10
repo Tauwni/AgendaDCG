@@ -419,7 +419,7 @@ struct WeekColumns: View {
     func block(_ e: AgendaEvent, tasks: [AgendaEvent] = []) -> some View {
         let done = model.isDone(e)
         return VStack(alignment: .leading, spacing: 2) {
-            Text(e.title).font(.caption.weight(.semibold)).strikethrough(done)
+            Text(model.revTitle(e)).font(.caption.weight(.semibold)).strikethrough(done)
             Text((e.timeLabel ?? "") + (e.isClass ? "" : " · " + Kind.label(e.kind))).font(.caption2).foregroundStyle(.secondary)
             ForEach(tasks) { t in
                 Label(t.title + ((t.attachments ?? []).isEmpty ? "" : " 📎"), systemImage: Kind.icon(t.kind))
@@ -432,7 +432,7 @@ struct WeekColumns: View {
             }
             if e.revision == true && !model.hasLevels { Text("✨ Clique pour personnaliser").font(.caption2.weight(.semibold)) }
             ForEach(model.revisionFor(e), id: \.self) { p in
-                Text("📖 " + p.label).font(.caption2.weight(.semibold)).lineLimit(1)
+                Text((model.isSujetSlot(e) ? "✏️ " : "📖 ") + p.label).font(.caption2.weight(.semibold)).lineLimit(1)
                     .padding(.horizontal, 5).padding(.vertical, 3)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(.background, in: RoundedRectangle(cornerRadius: 5))
@@ -522,17 +522,14 @@ struct ClassDetail: View {
                 Spacer()
                 Button("Fermer") { dismiss() }.keyboardShortcut(.cancelAction)
             }
-            Text(event.title).font(.title.bold())
+            Text(model.revTitle(event)).font(.title.bold())
             Label("\(longDate(event.date).capitalized) · \(event.timeLabel ?? "")", systemImage: "clock").foregroundStyle(.secondary)
             if let s = event.subject { Label(s, systemImage: "book.closed").foregroundStyle(.secondary) }
             if event.revision == true {
                 if model.hasLevels {
                     Text("Au programme de ce créneau").font(.headline)
-                    let picks = model.revisionFor(event)
-                    if picks.isEmpty { Text("Rien de prioritaire : reprends librement un chapitre.").foregroundStyle(.secondary) }
-                    ForEach(picks, id: \.self) { p in
-                        VStack(alignment: .leading, spacing: 2) { Text(p.label).font(.body.weight(.semibold)); Text(p.why).font(.caption).foregroundStyle(.secondary) }
-                    }
+                    Text("Ta méthode : \(model.revMode == "sujets" ? "révision le matin, sujets le soir" : "révision seule")\(model.revMode == model.advisedMode ? " (conseillée pour toi)" : "")").font(.caption).foregroundStyle(.secondary)
+                    RevisionContent(event: event)
                     Button("Modifier mon niveau par matière") { levels = true }
                 } else {
                     Button("Personnaliser mes révisions (1 min)") { levels = true }.buttonStyle(.borderedProminent)
@@ -557,14 +554,61 @@ struct ClassDetail: View {
     }
 }
 
+struct RevisionContent: View {
+    @EnvironmentObject var model: AppModel
+    let event: AgendaEvent
+    @State private var askCorr: PdfFile?
+    func open(_ f: PdfFile) { Task { do { PdfWindow.show(url: try await model.download(f), title: f.name) } catch { model.show(error.localizedDescription) } } }
+    func pickRow(_ p: AppModel.RevisionPick) -> some View {
+        VStack(alignment: .leading, spacing: 2) { Text(p.label).font(.body.weight(.semibold)); Text(p.why).font(.caption).foregroundStyle(.secondary) }
+    }
+    var body: some View {
+        let picks = model.revisionFor(event)
+        VStack(alignment: .leading, spacing: 8) {
+            if picks.isEmpty { Text("Rien de prioritaire : reprends librement un chapitre.").foregroundStyle(.secondary) }
+            else if !model.isSujetSlot(event) {
+                Text("Relis le cours, fais-toi une fiche et récite sans regarder." + (model.revMode == "sujets" ? " En fin d'après-midi, tu feras les sujets de ces chapitres." : "")).font(.callout)
+                ForEach(picks, id: \.self) { p in
+                    HStack { pickRow(p); Spacer(); if let f = p.chapter?.file("cours") { Button("Fiche de cours") { open(f) } } }
+                }
+            } else {
+                Text("Les sujets des chapitres révisés ce matin. Fais-les sans regarder la correction.").font(.callout)
+                let with = picks.filter { $0.chapter?.file("sujet") != nil }, without = picks.filter { $0.chapter?.file("sujet") == nil }
+                ForEach(with, id: \.self) { p in
+                    HStack {
+                        Text(p.label).font(.body.weight(.semibold)); Spacer()
+                        Button("Sujet") { open(p.chapter!.file("sujet")!) }.buttonStyle(.borderedProminent)
+                        if let c = p.chapter?.file("corrige") { Button("Voir la correction") { askCorr = c } }
+                    }
+                }
+                if !without.isEmpty {
+                    Text((with.isEmpty ? "Pas de sujet en ligne pour ces chapitres." : "Pas de sujet pour l'autre chapitre.") + " Sinon voici des chapitres à réviser :").font(.callout.weight(.medium)).padding(.top, 6)
+                    ForEach(without, id: \.self) { pickRow($0) }
+                }
+            }
+        }
+        .alert("Tu es sûr de vouloir voir la correction ?", isPresented: Binding(get: { askCorr != nil }, set: { if !$0 { askCorr = nil } })) {
+            Button("Voir la correction") { if let c = askCorr { open(c) }; askCorr = nil }
+            Button("Pas encore", role: .cancel) { askCorr = nil }
+        } message: { Text("Essaie d'abord de finir le sujet seul.") }
+    }
+}
+
 /// Mini-sondage : niveau de 1 à 10 dans chaque matière (privé).
 struct LevelsSurvey: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) var dismiss
     @State private var values: [String: Double] = [:]
+    @State private var mode = 2
+    var avg: Double { let v = model.revSubjects.map { values[$0] ?? 5 }; return v.isEmpty ? 5 : v.reduce(0, +) / Double(v.count) }
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Mon niveau").font(.title2.bold())
+            Picker("Méthode le week-end", selection: $mode) {
+                Text("Révision le matin, sujets en fin d'après-midi").tag(2)
+                Text("Révision seule").tag(1)
+            }.pickerStyle(.radioGroup)
+            Text(avg < 5 ? "Conseil pour toi : la révision seule, le temps de consolider tes bases (moyenne de tes niveaux sous 5/10)." : "Conseil pour toi : révision le matin et sujets le soir, pour t'entraîner comme le jour de l'éval.").font(.caption).foregroundStyle(.secondary)
             Text("Note de 1 à 10 ton niveau dans chaque matière. Les créneaux de révision du week-end te proposeront plus souvent tes matières faibles, en plus des chapitres de tes prochaines évals. Personne d'autre ne voit tes réponses.").foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             ForEach(model.revSubjects, id: \.self) { s in
                 let v = Int(values[s] ?? 5)
@@ -578,14 +622,15 @@ struct LevelsSurvey: View {
                 Spacer()
                 Button("Annuler") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button("Enregistrer") {
-                    let out = Dictionary(uniqueKeysWithValues: model.revSubjects.map { ($0, Int(values[$0] ?? 5)) })
+                    var out = Dictionary(uniqueKeysWithValues: model.revSubjects.map { ($0, Int(values[$0] ?? 5)) })
+                    out["__mode"] = mode
                     Task { if await model.saveLevels(out) { model.show("Révisions personnalisées ✓"); dismiss() } }
                 }.keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
             }
         }
         .padding(24)
         .frame(width: 480)
-        .onAppear { for s in model.revSubjects { values[s] = Double(model.levelOf(s) ?? 5) } }
+        .onAppear { for s in model.revSubjects { values[s] = Double(model.levelOf(s) ?? 5) }; mode = model.profile?.levels?["__mode"] ?? (model.advisedMode == "sujets" ? 2 : 1) }
     }
 }
 

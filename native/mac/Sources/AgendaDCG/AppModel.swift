@@ -108,7 +108,7 @@ final class AppModel: ObservableObject {
         for c in schedule?.classes ?? [] where c.kind != "revision" && !seen.contains(c.subject) { seen.append(c.subject) }
         return seen
     }
-    var hasLevels: Bool { !(profile?.levels ?? [:]).isEmpty }
+    var hasLevels: Bool { (profile?.levels ?? [:]).keys.contains { $0 != "__mode" } }
     func levelOf(_ s: String) -> Int? { profile?.levels?.first { sameSubject($0.key, s) }?.value }
     static func levelWord(_ n: Int) -> String { n <= 3 ? "à reprendre" : n <= 5 ? "fragile" : n <= 7 ? "correct" : "solide" }
     private func saturday(_ day: String) -> Date { let wd = Schedule.weekday(day); return addDays(parseISO(day), wd == 0 ? -1 : 6 - wd) }
@@ -140,12 +140,24 @@ final class AppModel: ObservableObject {
         }
         return items.sorted { $0.score > $1.score }
     }
+    /// Méthode : "sujets" (révision le matin, sujets des mêmes chapitres le soir) ou "revision" (révision seule).
+    var advisedMode: String {
+        let ls = revSubjects.map { Double(levelOf($0) ?? 5) }
+        return (ls.isEmpty ? 5 : ls.reduce(0, +) / Double(ls.count)) < 5 ? "revision" : "sujets"
+    }
+    var revMode: String { switch profile?.levels?["__mode"] { case 2: return "sujets"; case 1: return "revision"; default: return advisedMode } }
+    func revSlot(_ e: AgendaEvent) -> (day: Int, part: Int) {
+        let same = (schedule?.classes(on: e.date) ?? []).filter { $0.revision == true }
+        return (Schedule.weekday(e.date) == 0 ? 1 : 0, max(0, same.firstIndex { $0.id == e.id } ?? 0))
+    }
+    func isSujetSlot(_ e: AgendaEvent) -> Bool { e.revision == true && revMode == "sujets" && revSlot(e).part == 1 }
+    func revTitle(_ e: AgendaEvent) -> String { e.revision != true ? e.title : isSujetSlot(e) ? "Sujets d'entraînement" : "Révision des chapitres" }
     func revisionFor(_ e: AgendaEvent) -> [RevisionPick] {
         guard e.revision == true, hasLevels else { return [] }
-        let sat = saturday(e.date)
-        let slots = [iso(sat), iso(addDays(sat, 1))].flatMap { (schedule?.classes(on: $0) ?? []).filter { $0.revision == true } }
-        guard let i = slots.firstIndex(where: { $0.id == e.id }) else { return [] }
-        return Array(revisionPicks(e.date).dropFirst(i * 2).prefix(2))
+        var all = revisionPicks(e.date)
+        if revMode == "sujets" { all = all.filter { $0.chapter?.file("sujet") != nil } + all.filter { $0.chapter?.file("sujet") == nil } }
+        let s = revSlot(e), block = revMode == "sujets" ? s.day : s.day * 2 + s.part
+        return Array(all.dropFirst(block * 2).prefix(2))
     }
     func saveLevels(_ levels: [String: Int]) async -> Bool {
         await run { profile = try await API.call("profile/levels", method: "PUT", body: ["levels": levels]) }
