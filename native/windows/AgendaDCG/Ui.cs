@@ -111,7 +111,7 @@ public static class Ui
     public static FrameworkElement Field(string label, UIElement input)
     {
         var g = new Grid { Margin = new Thickness(0, 4, 0, 4) };
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(185) });
         g.ColumnDefinitions.Add(new ColumnDefinition());
         var t = T(label, 13, null, Theme.Text2); t.VerticalAlignment = VerticalAlignment.Center;
         g.Children.Add(t);
