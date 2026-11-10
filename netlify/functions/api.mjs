@@ -142,7 +142,7 @@ function readPrefs(p) {
 }
 
 const publicProfile = (p) => ({
-  id: p.id, name: p.name, done: p.done || [], grades: p.grades || [], prefs: p.prefs || readPrefs({}),
+  id: p.id, name: p.name, done: p.done || [], grades: p.grades || [], prefs: p.prefs || readPrefs({}), levels: p.levels || null,
   pushDevices: (p.subs || []).length,
 });
 
@@ -265,6 +265,10 @@ async function handleProfile(req, url, id, method) {
     const { grades, error } = readGrades(body.grades);
     if (error) return json({ error }, 400);
     profile.grades = grades;
+  } else if (id === "levels" && method === "PUT") {
+    const out = {};
+    for (const [k, v] of Object.entries(body.levels || {}).slice(0, 30)) { const n = Math.round(Number(v)); if (n >= 1 && n <= 10) out[String(k).slice(0, 60)] = n; }
+    profile.levels = out;
   } else if (id === "prefs" && method === "PUT") {
     profile.prefs = readPrefs(body.prefs);
   } else if (id === "push" && method === "POST") {

@@ -635,10 +635,12 @@ function openClass(id) {
     <div class="sheet-head"><button class="link" data-act="close">Fermer</button><h3></h3><span></span></div>
     <div class="sheet-body">
       <div>
-        <span class="kind-badge" style="--c:${col(c.color)}">${kindIcon("cours")}Cours · emploi du temps</span>
+        <span class="kind-badge" style="--c:${col(c.color)}">${kindIcon("cours")}${c.revision ? "Révision · créneau conseillé" : "Cours · emploi du temps"}</span>
         <h2 class="detail-title" style="--c:${col(c.color)}"><span class="bar"></span><span>${esc(c.title)}</span></h2>
         <div class="detail-sub">${esc(c.subject)} · ${longDate(key)} · ${esc(c.time)}–${esc(c.end)}</div>
       </div>
+      ${c.revision ? (hasLevels() ? `<div class="label">Au programme de ce créneau</div><div class="group">${revisionFor(c).map((p) => `<div class="set-row"><span><b>${esc(pickLabel(p))}</b><small>${esc(p.why)}</small></span></div>`).join("") || `<div class="hint">Rien de prioritaire : reprends librement un chapitre.</div>`}</div><button class="btn-row" data-act="levels">Modifier mon niveau par matière</button>`
+        : `<button class="btn-row blue" data-act="levels">Personnaliser mes révisions (1 min)</button>`) : ""}
       ${chs.length ? `<button class="btn-row blue" data-act="cours">Voir les cours de ${esc(c.subject.split(" · ")[0])} (${plural(chs.length, "chapitre")})</button>` : ""}
       <button class="btn-row" data-act="revise">Réviser avec Objectif DCG</button>
       <div class="detail-sub">${c.revision ? "Créneau de révision conseillé : le matin pour la mémorisation, des séances de 1 h 30 à 2 h 30 avec pauses, et une reprise des cours de jeudi et vendredi dans les 48 h." : "Cours fixe de l'emploi du temps : il revient chaque semaine."}</div>
@@ -646,7 +648,67 @@ function openClass(id) {
   bd.querySelector("[data-act=close]").onclick = () => closeSheet();
   const go = bd.querySelector("[data-act=cours]");
   if (go) go.onclick = () => { closeSheet(); showTab("cours"); };
+  const lv = bd.querySelector("[data-act=levels]");
+  if (lv) lv.onclick = () => { closeSheet(); setTimeout(() => openLevels(() => openClass(id)), 250); };
   bd.querySelector("[data-act=revise]").onclick = () => window.open(REVISE_URL, "_blank", "noopener");
+}
+
+/* ---------- Révisions personnalisées (niveau 1–10 par matière) ---------- */
+const revSubjects = () => [...new Map((state.schedule?.classes || []).filter((c) => c.kind !== "revision").map((c) => [norm(c.subject), c.subject])).values()];
+const levelOf = (s) => { const l = state.profile?.levels || {}; const k = Object.keys(l).find((x) => sameSubject(x, s)); return k ? l[k] : null; };
+const hasLevels = () => !!state.profile?.levels && Object.keys(state.profile.levels).length > 0;
+const LEVEL_WORD = (n) => n <= 3 ? "à reprendre" : n <= 5 ? "fragile" : n <= 7 ? "correct" : "solide";
+/** Suggestions pour le week-end qui contient `key` : liste ordonnée, répartie sur les créneaux. */
+function revisionPicks(key) {
+  const d = parse(key), sat = iso(addDays(d, d.getDay() === 0 ? -1 : 6 - d.getDay()));
+  const weekN = Math.floor(parse(sat).getTime() / (7 * 864e5));
+  const items = [], seen = new Set();
+  const deadlines = state.events.filter((e) => ["eval", "examen", "devoir", "exercice"].includes(e.kind || "eval") && e.date > sat && !isDone(e.id));
+  for (const s of revSubjects()) {
+    const lvl = levelOf(s) ?? 5, weak = (11 - lvl) / 10;
+    const chs = chaptersOf(s);
+    for (const e of deadlines.filter((x) => sameSubject(x.subject, s))) {
+      const days = Math.round((parse(e.date) - parse(sat)) / 864e5);
+      if (days > 14) continue;
+      const linked = (e.chapters || []).map(chapterById).filter(Boolean);
+      for (const ch of linked.length ? linked : [null]) {
+        const id = ch ? ch.id : "s:" + s + e.id; if (seen.has(id)) continue; seen.add(id);
+        items.push({ subject: s, chapter: ch, score: 4 + 3 * (1 - days / 14) + 2 * weak, why: `${kindLabel(e.kind || "eval")} dans ${plural(days, "jour")}` });
+      }
+    }
+    // Rotation des chapitres (révision espacée) : plus la matière est faible, plus elle revient souvent
+    const n = lvl <= 3 ? 3 : lvl <= 6 ? 2 : 1;
+    for (let i = 0; i < n; i++) {
+      const ch = chs.length ? chs[(weekN * n + i) % chs.length] : null;
+      const id = ch ? ch.id : "s:" + s + i; if (seen.has(id) || (!ch && i)) continue; seen.add(id);
+      items.push({ subject: s, chapter: ch, score: 3 * weak - i * 0.3, why: `Niveau ${lvl}/10 · ${LEVEL_WORD(lvl)}` });
+    }
+  }
+  return items.sort((a, b) => b.score - a.score);
+}
+function revisionFor(c) {
+  if (!c.revision || !hasLevels()) return [];
+  const d = parse(c.date), sat = addDays(d, d.getDay() === 0 ? -1 : 6 - d.getDay());
+  const slots = [iso(sat), iso(addDays(sat, 1))].flatMap((k) => classesOn(k).filter((x) => x.revision));
+  const i = slots.findIndex((x) => x.id === c.id), per = 2;
+  return revisionPicks(c.date).slice(i * per, i * per + per);
+}
+const pickLabel = (p) => p.chapter ? `${p.subject.split(" · ")[0]} · ${p.chapter.title}` : `${p.subject.split(" · ")[0]} · reprendre le cours`;
+function openLevels(after) {
+  const subs = revSubjects();
+  const bd = openSheet(`
+    <div class="sheet-head"><button class="link" data-act="close">Annuler</button><h3>Mon niveau</h3><button class="link" data-act="save"><b>Enregistrer</b></button></div>
+    <div class="sheet-body">
+      <div class="detail-sub">Note de 1 à 10 ton niveau dans chaque matière. Les créneaux de révision du week-end te proposeront plus souvent tes matières faibles, en plus des chapitres de tes prochaines évals. Personne d'autre ne voit tes réponses.</div>
+      ${subs.map((s, i) => { const v = levelOf(s) ?? 5; return `<div class="group" style="padding:12px 14px"><div style="display:flex;justify-content:space-between"><b>${esc(s)}</b><span data-out="${i}">${v}/10 · ${LEVEL_WORD(v)}</span></div><input type="range" min="1" max="10" step="1" value="${v}" data-lvl="${i}" style="width:100%;accent-color:var(--accent)"></div>`; }).join("")}
+    </div>`);
+  bd.querySelectorAll("[data-lvl]").forEach((r) => r.oninput = () => { bd.querySelector(`[data-out="${r.dataset.lvl}"]`).textContent = `${r.value}/10 · ${LEVEL_WORD(Number(r.value))}`; });
+  bd.querySelector("[data-act=close]").onclick = () => closeSheet();
+  bd.querySelector("[data-act=save]").onclick = async () => {
+    const levels = {}; bd.querySelectorAll("[data-lvl]").forEach((r) => levels[subs[r.dataset.lvl]] = Number(r.value));
+    try { state.profile = await send("profile/levels", "PUT", { levels }); closeSheet(); toast("Révisions personnalisées ✓"); renderAll(); after?.(); }
+    catch (err) { toast(err.message); }
+  };
 }
 
 /* ---------- Emploi du temps fixe (public/schedule.json) ---------- */
@@ -1020,7 +1082,7 @@ function weekHtml() {
       const top = ((a - TT_START * 60) / 60) * 100 / (TT_END - TT_START), h = ((b - a) / 60) * 100 / (TT_END - TT_START);
       return `<button class="tt-block tt-ev ${isDone(e.id) ? "done" : ""} ${e.virtual ? "class" : ""}" data-id="${e.id}" style="--c:${col(e.color)};top:${top}%;height:${h}%;left:calc(${(lane / n) * 100}% + 2px);width:calc(${100 / n}% - 4px)">
         <b>${esc(e.title)}</b><span>${esc(e.time)}${e.end ? "–" + esc(e.end) : ""}${!e.virtual ? " · " + kindLabel(e.kind || "eval") : ""}</span>
-        ${e.virtual ? inside.filter((x) => sameSubject(x.subject, e.subject)).map((x) => `<span class="tt-task tt-ev ${isDone(x.id) ? "done" : ""}" data-id="${x.id}">${kindIcon(x.kind || "eval")}${esc(x.title)}${(x.chapters || []).length ? ` · ${plural(x.chapters.length, "chap.")}` : ""}${(x.attachments || []).length ? " 📎" : ""}</span>`).join("") : ""}</button>`;
+        ${e.virtual ? inside.filter((x) => sameSubject(x.subject, e.subject)).map((x) => `<span class="tt-task tt-ev ${isDone(x.id) ? "done" : ""}" data-id="${x.id}">${kindIcon(x.kind || "eval")}${esc(x.title)}${(x.chapters || []).length ? ` · ${plural(x.chapters.length, "chap.")}` : ""}${(x.attachments || []).length ? " 📎" : ""}</span>`).join("") : ""}${e.revision && !hasLevels() ? `<span class="tt-task">✨ Clique pour personnaliser</span>` : ""}${e.revision ? revisionFor(e).map((p) => `<span class="tt-task">📖 ${esc(pickLabel(p))}</span>`).join("") : ""}</button>`;
     }).join("");
     const now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
     const line = key === today && nowMin > TT_START * 60 && nowMin < TT_END * 60 ? `<div class="tt-now" style="top:${((nowMin - TT_START * 60) / 60) * 100 / (TT_END - TT_START)}%"></div>` : "";
@@ -2238,6 +2300,11 @@ function renderSettings() {
     </div>
 
     <div class="section">
+      <h2>Révisions</h2>
+      <button class="btn-row blue" data-act="levels">${hasLevels() ? "Modifier mon niveau par matière" : "Personnaliser mes révisions (1 min)"}</button>
+    </div>
+
+    <div class="section">
       <h2>Exporter vers ton calendrier</h2>
       <div class="group" id="calBox">
         <div class="hint">Importe les devoirs, évaluations et examens à venir dans le Calendrier iPhone/Mac ou Google Agenda (ceux que tu as cochés sont marqués ✓). C'est une copie : pas de mise à jour automatique, refais l'import si l'agenda change.</div>
@@ -2255,6 +2322,7 @@ function renderSettings() {
       <button class="btn-row" data-act="logout">Se déconnecter</button>
     </div>`;
 
+  page.querySelector("[data-act=levels]").onclick = () => openLevels(() => renderSettings());
   api("calendar-link").then(({ url }) => {
     $("#calApple").href = url;
     $("#calCopy").href = url;
