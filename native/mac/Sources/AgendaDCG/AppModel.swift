@@ -89,6 +89,38 @@ final class AppModel: ObservableObject {
     }
     func events(on day: String) -> [AgendaEvent] { ((schedule?.classes(on: day) ?? []) + events.filter { $0.date == day }).sorted { $0.sortKey < $1.sortKey } }
     func isCompanyDay(_ day: String) -> Bool { schedule?.isCompanyDay(day) ?? false }
+    /// Le cours de la matière ce jour-là : un devoir s'y range automatiquement.
+    func classFor(_ day: String, _ subject: String?) -> AgendaEvent? { schedule?.classes(on: day).first { sameSubject($0.subject, subject) } }
+    func nextClasses(_ subject: String?, from: Date = Date(), count: Int = 4) -> [AgendaEvent] {
+        var out: [AgendaEvent] = []
+        for i in 0..<120 where out.count < count { if let c = classFor(iso(addDays(from, i)), subject) { out.append(c) } }
+        return out
+    }
+    func inClass(_ e: AgendaEvent) -> Bool {
+        guard !e.isClass, let c = classFor(e.date, e.subject) else { return false }
+        guard let t = e.time, !t.isEmpty else { return true }
+        return t >= (c.time ?? "") && t < (c.end ?? "")
+    }
+    var pastHomework: [AgendaEvent] { let t = iso(Date()); return events.filter { $0.date < t && !($0.attachments ?? []).isEmpty }.sorted { $0.date > $1.date } }
+
+    /// Joint une photo ou un PDF à un devoir (rangé avec le devoir, pas dans les cours).
+    func attach(urls: [URL], to ev: AgendaEvent) async {
+        _ = await run {
+            let (data, name) = try PdfMaker.make(from: urls)
+            struct Start: Decodable { var key: String; var uploadUrl: String }
+            let s: Start = try await API.call("files/start", method: "POST", body: ["event": ev.id, "by": self.name, "name": name, "size": data.count])
+            var req = URLRequest(url: URL(string: s.uploadUrl)!)
+            req.httpMethod = "PUT"
+            req.setValue("application/pdf", forHTTPHeaderField: "content-type")
+            show("Envoi de \(fileSize(data.count))…")
+            let (_, res) = try await API.session.upload(for: req, from: data)
+            guard (res as? HTTPURLResponse)?.statusCode == 200 else { throw APIError(message: "Envoi impossible", status: 0) }
+            let updated: AgendaEvent = try await API.call("files/finish", method: "POST", body: ["event": ev.id, "key": s.key, "name": name, "by": self.name])
+            events.removeAll { $0.id == updated.id }
+            events.append(updated)
+            show("Fichier ajouté")
+        }
+    }
 
     func start() async {
         // Tests locaux uniquement : AGENDA_SITE=http://localhost:8888 AGENDA_TEST_LOGIN="prénom:code:motdepasse"

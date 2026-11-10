@@ -25,6 +25,7 @@ public class AgendaEvent
     public string? CreatedAt { get; set; }
     public string? UpdatedBy { get; set; }
     public string? End { get; set; }
+    public List<PdfFile>? Attachments { get; set; }
     [JsonIgnore] public bool IsDeadline => Data.Deadline.Contains(Kind);
     [JsonIgnore] public bool IsClass => Id.StartsWith("edt:");
     [JsonIgnore] public string? TimeLabel => string.IsNullOrEmpty(Time) ? null : End == null ? Time : $"{Time}–{End}";
@@ -250,6 +251,38 @@ public class Store
     public Chapter? Chapter(string id) => Chapters.FirstOrDefault(c => c.Id == id);
     public List<AgendaEvent> On(string day) => (Schedule?.On(day) ?? new()).Concat(Events.Where(e => e.Date == day)).OrderBy(e => e.SortKey).ToList();
     public bool IsCompanyDay(string day) => Schedule?.IsCompanyDay(day) ?? false;
+    public static bool SameSubject(string? a, string? b) => !string.IsNullOrEmpty(a) && !string.IsNullOrEmpty(b) && (a == b || a.Split(" · ")[0] == b.Split(" · ")[0]);
+    /// Le cours de la matière ce jour-là : un devoir s'y range automatiquement.
+    public AgendaEvent? ClassFor(string day, string? subject) => Schedule?.On(day).FirstOrDefault(c => SameSubject(c.Subject, subject));
+    public List<AgendaEvent> NextClasses(string? subject, int n = 4)
+    {
+        var o = new List<AgendaEvent>();
+        for (var i = 0; i < 120 && o.Count < n; i++) if (ClassFor(Data.Iso(DateTime.Today.AddDays(i)), subject) is { } c) o.Add(c);
+        return o;
+    }
+    public bool InClass(AgendaEvent e)
+    {
+        if (e.IsClass || ClassFor(e.Date, e.Subject) is not { } c) return false;
+        return string.IsNullOrEmpty(e.Time) || (string.CompareOrdinal(e.Time, c.Time) >= 0 && string.CompareOrdinal(e.Time, c.End) < 0);
+    }
+    public List<AgendaEvent> PastHomework() { var t = Data.Iso(DateTime.Today); return Events.Where(e => string.CompareOrdinal(e.Date, t) < 0 && (e.Attachments?.Count ?? 0) > 0).OrderByDescending(e => e.Date).ToList(); }
+
+    /// Joint un PDF à un devoir (rangé avec le devoir, pas dans les cours).
+    public async Task Attach(string path, AgendaEvent ev)
+    {
+        var data = await File.ReadAllBytesAsync(path);
+        if (data.Length > 100 * 1024 * 1024) throw new ApiException("PDF trop lourd (max 100 Mo)", 413);
+        var name = Path.GetFileName(path);
+        var s = await Api.Call<Start>(HttpMethod.Post, "files/start", new { @event = ev.Id, by = Name, name, size = data.Length });
+        using var put = new HttpRequestMessage(HttpMethod.Put, s.UploadUrl) { Content = new ByteArrayContent(data) };
+        put.Content.Headers.ContentType = new("application/pdf");
+        using var res = await Api.Http.SendAsync(put);
+        if (!res.IsSuccessStatusCode) throw new ApiException("Envoi impossible", (int)res.StatusCode);
+        var updated = await Api.Call<AgendaEvent>(HttpMethod.Post, "files/finish", new { @event = ev.Id, key = s.Key, name, by = Name });
+        Events.RemoveAll(e => e.Id == updated.Id);
+        Events.Add(updated);
+        Notify();
+    }
     public List<string> CourseSubjects()
     {
         var have = Chapters.Select(c => c.Subject).ToHashSet();

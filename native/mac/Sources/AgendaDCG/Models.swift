@@ -20,6 +20,7 @@ struct AgendaEvent: Codable, Identifiable, Hashable {
     var updatedAt: String?
     var history: [HistoryEntry]?
     var end: String?
+    var attachments: [PdfFile]?
 
     var isDeadline: Bool { Kind.deadline.contains(kind) }
     var isClass: Bool { id.hasPrefix("edt:") }
@@ -51,6 +52,11 @@ struct Schedule: Codable {
 }
 
 let REVISE_URL = URL(string: "https://objectif-dcg.netlify.app/")!
+
+func sameSubject(_ a: String?, _ b: String?) -> Bool {
+    guard let a, let b, !a.isEmpty, !b.isEmpty else { return false }
+    return a == b || a.components(separatedBy: " · ").first == b.components(separatedBy: " · ").first
+}
 
 struct PdfFile: Codable, Hashable { var key: String; var name: String; var size: Int?; var uploadedBy: String?; var uploadedAt: String? }
 

@@ -419,7 +419,7 @@ public class MainWindow : Window
             Grid.SetColumn(hd, i + 1); head.Children.Add(hd);
 
             var chips = new StackPanel { Margin = new Thickness(2) };
-            foreach (var e in S.On(day).Where(e => string.IsNullOrEmpty(e.Time)))
+            foreach (var e in S.On(day).Where(e => string.IsNullOrEmpty(e.Time) && !S.InClass(e)))
             {
                 var ev = e;
                 var t = T(e.Title, 11.5, FontWeights.SemiBold); if (S.IsDone(e)) t.TextDecorations = TextDecorations.Strikethrough;
@@ -429,7 +429,8 @@ public class MainWindow : Window
             }
             Grid.SetColumn(chips, i + 1); allDay.Children.Add(chips);
 
-            var timed = S.On(day).Where(e => !string.IsNullOrEmpty(e.Time)).ToList();
+            var insideAll = S.On(day).Where(S.InClass).ToList();
+            var timed = S.On(day).Where(e => !string.IsNullOrEmpty(e.Time) && !S.InClass(e)).ToList();
             var note = Data.Holiday(day) ?? (S.IsCompanyDay(day) && timed.Count == 0 ? "Entreprise" : null);
             var canvas = new Canvas { Height = HourH * (EndH - StartH), Background = note != null ? Theme.Of("brown", 14) : day == selected ? Theme.Of("red", 10) : Brushes.Transparent, Margin = new Thickness(2, 0, 2, 0), ClipToBounds = true };
             for (var h = 0; h < EndH - StartH; h++) { var l = new Rectangle { Height = 1, Fill = Theme.Line }; Canvas.SetTop(l, h * HourH); l.SetBinding(WidthProperty, new System.Windows.Data.Binding("ActualWidth") { Source = canvas }); canvas.Children.Add(l); }
@@ -446,6 +447,16 @@ public class MainWindow : Window
                 if (S.IsDone(e)) tt.TextDecorations = TextDecorations.Strikethrough;
                 inner.Children.Add(tt);
                 inner.Children.Add(T((e.TimeLabel ?? "") + (e.IsClass ? "" : " · " + Data.KindLabel(e.Kind)), 11, null, Theme.Text2));
+                if (e.IsClass)
+                    foreach (var task in insideAll.Where(x => Store.SameSubject(x.Subject, e.Subject)))
+                    {
+                        var tk = task;
+                        var tt2 = T("• " + task.Title + ((task.Attachments?.Count ?? 0) > 0 ? " 📎" : ""), 11, FontWeights.SemiBold);
+                        if (S.IsDone(task)) tt2.TextDecorations = TextDecorations.Strikethrough;
+                        var chip = new Border { Child = tt2, Background = Theme.Card, CornerRadius = new CornerRadius(4), Padding = new Thickness(4, 2, 4, 2), Margin = new Thickness(0, 3, 0, 0) };
+                        chip.MouseLeftButtonUp += (_, x) => { Dialogs.EventDetail(tk); x.Handled = true; };
+                        inner.Children.Add(chip);
+                    }
                 var block = new Border { Child = inner, Background = Theme.Of(e.Color, (byte)(S.IsDone(e) ? 25 : e.IsClass ? 75 : 55)), BorderBrush = Theme.Of(e.Color), BorderThickness = new Thickness(3, 0, 0, 0), CornerRadius = new CornerRadius(6), Padding = new Thickness(6, 4, 4, 4), Height = (b - a) / 60.0 * HourH - 2, Cursor = Cursors.Hand };
                 block.MouseLeftButtonUp += (_, x) => { if (ev.IsClass) Dialogs.ClassDetail(ev); else Dialogs.EventDetail(ev); x.Handled = true; };
                 var laneI = lane[k];
@@ -656,6 +667,15 @@ public class MainWindow : Window
         var body = new StackPanel { MaxWidth = 640, HorizontalAlignment = HorizontalAlignment.Left };
         body.Children.Add(Section("Compte", account));
         body.Children.Add(Section("Notifications", notif));
+        var past = new StackPanel();
+        var list = S.PastHomework();
+        if (list.Count == 0) past.Children.Add(T("Les sujets joints aux devoirs apparaîtront ici une fois la date passée.", 13, null, Theme.Text2));
+        foreach (var e in list)
+        {
+            var h = T($"{e.Title} · {Data.LongDate(e.Date)}", 13, FontWeights.SemiBold); h.Margin = new Thickness(0, 6, 0, 2); past.Children.Add(h);
+            foreach (var f in e.Attachments!) { var ff = f; var b = Btn("📄 " + f.Name, async () => await Try(async () => { var p = await S.Download(ff); Process.Start(new ProcessStartInfo(p) { UseShellExecute = true }); })); b.HorizontalAlignment = HorizontalAlignment.Left; b.Margin = new Thickness(0, 2, 0, 2); past.Children.Add(b); }
+        }
+        body.Children.Add(Section("Devoirs passés", past));
         body.Children.Add(Section("Application", app));
         return Page("Réglages", Scroll(body));
     }

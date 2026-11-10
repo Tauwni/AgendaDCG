@@ -208,6 +208,17 @@ struct SettingsView: View {
                     }
                 }
             } header: { Text("Notifications") } footer: { Text("Les rappels s'affichent sur ce Mac, même quand l'agenda est fermé.") }
+            Section("Devoirs passés") {
+                if model.pastHomework.isEmpty { Text("Les sujets joints aux devoirs apparaîtront ici une fois la date passée.").foregroundStyle(.secondary) }
+                ForEach(model.pastHomework) { e in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(e.title) · \(longDate(e.date))").font(.callout.weight(.semibold))
+                        ForEach(e.attachments ?? [], id: \.key) { f in
+                            Button { Task { do { PdfWindow.show(url: try await model.download(f), title: f.name) } catch { model.show(error.localizedDescription) } } } label: { Label(f.name, systemImage: "doc.richtext") }.buttonStyle(.link)
+                        }
+                    }
+                }
+            }
             Section("Application") {
                 LabeledContent("Version", value: Updater.currentVersion)
                 LabeledContent("Mise à jour", value: updater.status)

@@ -338,7 +338,7 @@ struct WeekColumns: View {
                 Text("Journée").font(.caption2).foregroundStyle(.secondary).frame(width: 44, alignment: .trailing)
                 ForEach(days, id: \.self) { day in
                     VStack(spacing: 3) {
-                        ForEach(model.events(on: day).filter { ($0.time ?? "").isEmpty }) { e in
+                        ForEach(model.events(on: day).filter { ($0.time ?? "").isEmpty && !model.inClass($0) }) { e in
                             Label(e.title, systemImage: Kind.icon(e.kind)).font(.caption.weight(.semibold)).lineLimit(1)
                                 .padding(.horizontal, 6).padding(.vertical, 3)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -373,7 +373,8 @@ struct WeekColumns: View {
     }
 
     @ViewBuilder func column(_ day: String, hourH: CGFloat, today: String) -> some View {
-        let timed = model.events(on: day).filter { !($0.time ?? "").isEmpty }
+        let inside = model.events(on: day).filter { model.inClass($0) }
+        let timed = model.events(on: day).filter { !($0.time ?? "").isEmpty && !model.inClass($0) }
         let note = holiday(day) ?? (model.isCompanyDay(day) && timed.isEmpty ? "Entreprise" : nil)
         ZStack(alignment: .topLeading) {
             VStack(spacing: 0) {
@@ -386,7 +387,7 @@ struct WeekColumns: View {
                     let a = max(Self.minutes(e.time!), startH * 60)
                     let b = min(max(e.end.map(Self.minutes) ?? a + 60, a + 30), endH * 60)
                     let n = CGFloat(lanes.count), w = g.size.width / max(n, 1)
-                    block(e)
+                    block(e, tasks: inside.filter { sameSubject($0.subject, e.subject) && e.isClass })
                         .frame(width: w - 3, height: CGFloat(b - a) / 60 * hourH - 2)
                         .offset(x: CGFloat(lanes.index[i]) * w, y: CGFloat(a - startH * 60) / 60 * hourH + 1)
                 }
@@ -415,11 +416,20 @@ struct WeekColumns: View {
         return (ends.count, idx)
     }
 
-    func block(_ e: AgendaEvent) -> some View {
+    func block(_ e: AgendaEvent, tasks: [AgendaEvent] = []) -> some View {
         let done = model.isDone(e)
         return VStack(alignment: .leading, spacing: 2) {
             Text(e.title).font(.caption.weight(.semibold)).strikethrough(done)
             Text((e.timeLabel ?? "") + (e.isClass ? "" : " · " + Kind.label(e.kind))).font(.caption2).foregroundStyle(.secondary)
+            ForEach(tasks) { t in
+                Label(t.title + ((t.attachments ?? []).isEmpty ? "" : " 📎"), systemImage: Kind.icon(t.kind))
+                    .font(.caption2.weight(.semibold)).lineLimit(1)
+                    .strikethrough(model.isDone(t))
+                    .padding(.horizontal, 5).padding(.vertical, 3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.background, in: RoundedRectangle(cornerRadius: 5))
+                    .onTapGesture { detail = t }
+            }
         }
         .padding(5)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -590,6 +600,10 @@ struct EventDetail: View {
             }
             .foregroundStyle(.secondary)
             if let n = event.notes, !n.isEmpty { Text(n).textSelection(.enabled) }
+            if let c = model.classFor(event.date, event.subject) {
+                Label("Pendant le cours de \(c.title) · \(c.timeLabel ?? "")", systemImage: "graduationcap").foregroundStyle(eventColor(c.color))
+            }
+            AttachmentList(event: event)
             let chs = (event.chapters ?? []).compactMap(model.chapter)
             if !chs.isEmpty {
                 Text("Chapitres").font(.headline)
@@ -641,11 +655,25 @@ struct EventEditor: View {
                     ForEach(Kind.all, id: \.id) { Label($0.label, systemImage: $0.icon).tag($0.id) }
                 }
                 TextField("Titre", text: $ev.title)
-                Picker("Matière", selection: Binding(get: { ev.subject ?? "" }, set: { ev.subject = $0; ev.chapters = [] })) {
+                Picker("Matière", selection: Binding(get: { ev.subject ?? "" }, set: {
+                    ev.subject = $0; ev.chapters = []
+                    if model.classFor(ev.date, $0) == nil, Kind.deadline.contains(ev.kind), let n = model.nextClasses($0).first { ev.date = n.date }
+                    autoSlot()
+                })) {
                     Text("Aucune").tag("")
                     ForEach(subjects, id: \.self) { Text($0).tag($0) }
                 }
-                DatePicker("Date", selection: Binding(get: { parseISO(ev.date) }, set: { ev.date = iso($0) }), displayedComponents: .date)
+                DatePicker("Date", selection: Binding(get: { parseISO(ev.date) }, set: { ev.date = iso($0); autoSlot() }), displayedComponents: .date)
+                if let c = model.classFor(ev.date, ev.subject) {
+                    Label("Rangé dans le cours de \(c.title) · \(c.timeLabel ?? "")", systemImage: "graduationcap").foregroundStyle(eventColor(c.color))
+                }
+                let next = model.nextClasses(ev.subject).filter { $0.date != ev.date }.prefix(3)
+                if !next.isEmpty {
+                    HStack {
+                        Text("Prochains cours :").foregroundStyle(.secondary)
+                        ForEach(Array(next)) { c in Button(relativeDay(c.date)) { ev.date = c.date; autoSlot() }.buttonStyle(.link) }
+                    }
+                }
                 Toggle("Heure précise", isOn: $hasTime)
                 if hasTime { DatePicker("Heure", selection: $time, displayedComponents: .hourAndMinute) }
                 Picker("Couleur", selection: Binding(get: { ev.color ?? "blue" }, set: { ev.color = $0 })) {
@@ -685,9 +713,58 @@ struct EventEditor: View {
         .frame(width: 500, height: 620)
     }
 
+    /// Range le devoir dans le créneau du cours de la matière (heure et couleur du cours).
+    func autoSlot() {
+        guard let c = model.classFor(ev.date, ev.subject), let start = c.time else { return }
+        let t = hasTime ? String(format: "%02d:%02d", cal.component(.hour, from: time), cal.component(.minute, from: time)) : ""
+        if !hasTime || t < start || t >= (c.end ?? "") {
+            let p = start.split(separator: ":").compactMap { Int($0) }
+            time = cal.date(bySettingHour: p[0], minute: p[1], second: 0, of: Date())!
+            hasTime = true
+        }
+        ev.color = c.color
+    }
+
     var subjects: [String] {
         var s = model.courseSubjects
         if let cur = ev.subject, !cur.isEmpty, !s.contains(cur) { s.append(cur) }
         return s
+    }
+}
+
+
+/// Sujet et fichiers joints à un devoir.
+struct AttachmentList: View {
+    @EnvironmentObject var model: AppModel
+    let event: AgendaEvent
+    @State private var importing = false
+    @State private var busy = false
+    var body: some View {
+        let files = model.events.first { $0.id == event.id }?.attachments ?? event.attachments ?? []
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Sujet et fichiers").font(.headline)
+            ForEach(files, id: \.key) { f in
+                HStack {
+                    Image(systemName: "doc.richtext").foregroundStyle(.red)
+                    Text(f.name).lineLimit(1)
+                    Spacer()
+                    Button("Ouvrir") { Task { do { PdfWindow.show(url: try await model.download(f), title: f.name) } catch { model.show(error.localizedDescription) } } }
+                }
+            }
+            HStack {
+                Button { importing = true } label: { Label("Ajouter une photo ou un PDF", systemImage: "paperclip") }
+                if busy { ProgressView().controlSize(.small) }
+            }
+        }
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.pdf, .image], allowsMultipleSelection: true) { r in
+            guard case .success(let urls) = r, !urls.isEmpty else { return }
+            Task {
+                busy = true
+                let scoped = urls.map { $0.startAccessingSecurityScopedResource() }
+                await model.attach(urls: urls, to: event)
+                for (u, s) in zip(urls, scoped) where s { u.stopAccessingSecurityScopedResource() }
+                busy = false
+            }
+        }
     }
 }

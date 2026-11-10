@@ -21,6 +21,22 @@ public static class Dialogs
         body.Children.Add(title);
         body.Children.Add(T(Data.Cap(Data.LongDate(e.Date)) + (string.IsNullOrEmpty(e.Time) ? "" : $" à {e.Time}"), 14, null, Theme.Text2));
         if (!string.IsNullOrEmpty(e.Subject)) body.Children.Add(T(e.Subject, 14, null, Theme.Text2));
+        if (S.ClassFor(e.Date, e.Subject) is { } cls) { var cl = T($"Pendant le cours de {cls.Title} · {cls.TimeLabel}", 13, FontWeights.SemiBold, Theme.Of(cls.Color)); cl.Margin = new Thickness(0, 6, 0, 0); body.Children.Add(cl); }
+        var att = T("Sujet et fichiers", 16, FontWeights.Bold); att.Margin = new Thickness(0, 16, 0, 6); body.Children.Add(att);
+        foreach (var f in e.Attachments ?? new())
+        {
+            var ff = f;
+            var b = Btn("📄 " + f.Name, async () => await Try(async () => { var p = await S.Download(ff); Process.Start(new ProcessStartInfo(p) { UseShellExecute = true }); }));
+            b.HorizontalAlignment = HorizontalAlignment.Left; b.Margin = new Thickness(0, 0, 0, 4); body.Children.Add(b);
+        }
+        var add = Btn("+ Joindre un PDF (sujet, consignes…)", async () =>
+        {
+            var dlg = new OpenFileDialog { Filter = "PDF (*.pdf)|*.pdf", Title = "Joindre un PDF" };
+            if (dlg.ShowDialog() != true) return;
+            Toast("Envoi…");
+            if (await Try(() => S.Attach(dlg.FileName, e))) { Toast("Fichier ajouté"); w!.Close(); EventDetail(S.Events.First(x => x.Id == e.Id)); }
+        });
+        add.HorizontalAlignment = HorizontalAlignment.Left; body.Children.Add(add);
         if (!string.IsNullOrEmpty(e.Notes)) body.Children.Add(new TextBox { Text = e.Notes, IsReadOnly = true, TextWrapping = TextWrapping.Wrap, BorderThickness = new Thickness(0), Background = Brushes.Transparent, Foreground = Theme.Text, FontSize = 14, Margin = new Thickness(0, 12, 0, 0) });
         var chs = (e.Chapters ?? new()).Select(S.Chapter).Where(c => c != null).ToList();
         if (chs.Count > 0)
@@ -111,7 +127,28 @@ public static class Dialogs
                 chapterBox.Children.Add(cb);
             }
         }
-        subject.SelectionChanged += (_, _) => { chapters.Clear(); DrawChapters(); };
+        var slotInfo = T("", 13, FontWeights.SemiBold, Theme.Text2);
+        void AutoSlot()
+        {
+            var d = Data.Iso(day.SelectedDate ?? DateTime.Today);
+            if (S.ClassFor(d, subject.Value()) is { } c)
+            {
+                var t = time.Text.Trim();
+                if (t == "" || string.CompareOrdinal(t, c.Time) < 0 || string.CompareOrdinal(t, c.End) >= 0) time.Text = c.Time;
+                color = c.Color ?? color; DrawColors();
+                slotInfo.Text = $"Rangé dans le cours de {c.Title} · {c.TimeLabel}"; slotInfo.Foreground = Theme.Of(c.Color);
+            }
+            else slotInfo.Text = "";
+        }
+        subject.SelectionChanged += (_, _) =>
+        {
+            chapters.Clear(); DrawChapters();
+            var d = Data.Iso(day.SelectedDate ?? DateTime.Today);
+            if (S.ClassFor(d, subject.Value()) == null && Data.Deadline.Contains(kind.Value()) && S.NextClasses(subject.Value()).FirstOrDefault() is { } n) day.SelectedDate = Data.Parse(n.Date);
+            AutoSlot();
+        };
+        day.SelectedDateChanged += (_, _) => AutoSlot();
+        AutoSlot();
         DrawChapters();
         var notes = new TextBox { Text = ev.Notes ?? "", AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Height = 90, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         var err = T("", 13, null, Theme.Accent);
@@ -136,7 +173,7 @@ public static class Dialogs
 
         var body = V(4, T(isNew ? "Nouvel événement" : "Modifier", 22, FontWeights.Bold),
             Field("Type", kind), Field("Titre", title), Field("Matière", subject), Field("Date", day), Field("Heure", time),
-            Field("Couleur", colors), chapterBox, T("Notes", 13, FontWeights.SemiBold, Theme.Text2), notes, err, actions);
+            slotInfo, Field("Couleur", colors), chapterBox, T("Notes", 13, FontWeights.SemiBold, Theme.Text2), notes, err, actions);
         w = Dialog(isNew ? "Nouvel événement" : "Modifier", body, 520);
         title.Focus();
         w.ShowDialog();

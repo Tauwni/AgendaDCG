@@ -33,6 +33,7 @@ static class Demo
             E("3", "devoir", "Cas pratique provisions", UE10, 0, "18:00", "red"), E("4", "eval", "Contrôle contrats à long terme", UE10, 2, "10:00", "red"),
             E("5", "exercice", "Exercices SARL", UE2, 1, "", "brown"), E("6", "examen", "Examen blanc de finance", UE6, 4, "08:30", "yellow"),
             E("7", "devoir", "Dossier droit fiscal", UE4, 9, "", "purple"),
+            E("8", "devoir", "Devoir finance ch. 5", UE6, (5 - (int)DateTime.Today.DayOfWeek + 7) % 7, "08:30", "yellow"),
         };
         Grade G(string sub, string t, int day, double v, string cat, double coef) => new() { Id = Guid.NewGuid().ToString(), Subject = sub, Title = t, Date = D(day), Value = v, Category = cat, Coef = coef };
         s.Profile = new()

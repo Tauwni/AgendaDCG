@@ -332,6 +332,11 @@ input, textarea { font: inherit; color: var(--text); }
 .tt-block:hover { transform: scale(1.02); z-index: 2; }
 .tt-block.class { background: color-mix(in srgb, var(--c) 30%, var(--card)); }
 .tt-ev.done { opacity: .45; text-decoration: line-through; }
+.tt-task { display: flex; align-items: center; gap: 4px; margin-top: 3px; padding: 3px 5px; border-radius: 5px; background: var(--card); color: var(--text) !important; font-size: 11px !important; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.12); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tt-task .kind-ico { width: 12px; height: 12px; flex: none; }
+.class-slot { margin: 0 16px; padding: 8px 12px; border-radius: 10px; font-size: 14px; background: color-mix(in srgb, var(--c) 15%, transparent); border-left: 3px solid var(--c); }
+.quick-dates { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 16px 0; font-size: 13px; color: var(--text2); }
+.quick-dates button { padding: 5px 10px; border-radius: 14px; background: var(--card); color: var(--blue); font-weight: 600; font-size: 13px; }
 .tt-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--accent); z-index: 3; }
 .tt-now::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 @media (max-width: 700px) { .view-toggle button { padding: 5px 8px; font-size: 12.5px; } .topbar .left { gap: 0; } .tt { grid-template-columns: 30px repeat(var(--days), minmax(0, 1fr)); column-gap: 2px; } .tt-block { padding: 4px; } .tt-block b { font-size: 11px; } .tt-block span { display: none; } .tt-hours div { font-size: 10px; padding-right: 3px; } }
@@ -656,6 +661,15 @@ function classesOn(key) {
   }));
 }
 const companyDay = (key) => inTerm(key) && (state.schedule.companyDays || []).includes(parse(key).getDay());
+/** Le cours de la matière ce jour-là (pour ranger un devoir dans son créneau). */
+const classFor = (key, subject) => subject ? classesOn(key).find((c) => sameSubject(c.subject, subject)) : null;
+const nextClasses = (subject, from = iso(new Date()), n = 4) => {
+  const out = [];
+  for (let i = 0; i < 120 && out.length < n; i++) { const key = iso(addDays(parse(from), i)); const c = classFor(key, subject); if (c) out.push(c); }
+  return out;
+};
+/** Devoir / éval rangé dans le créneau d'un cours (même jour, même matière). */
+const inClass = (e) => !e.virtual && !!classFor(e.date, e.subject) && (!e.time || (() => { const c = classFor(e.date, e.subject); return e.time >= c.time && e.time < c.end; })());
 const dayNote = (key) => holiday(key) || (companyDay(key) ? "Entreprise" : "");
 const dayEvents = (key) => [...classesOn(key), ...state.events.filter((e) => e.date === key)].sort((a, b) => (a.time || "").localeCompare(b.time || ""));
 
@@ -790,7 +804,7 @@ function renderTab(tab) {
   if (tab === "cours") renderCours();
   if (tab === "notes") renderNotes();
   if (tab === "reviser") renderReviser();
-  if (tab === "settings") renderSettings();
+  if (tab === "settings") { renderSettings(); renderPastHomework(); }
 }
 function renderAll() {
   renderBadge();
@@ -987,13 +1001,14 @@ function weekHtml() {
   }
   const hours = Array.from({ length: TT_END - TT_START }, (_, i) => TT_START + i);
   const allDay = days.map((key) => {
-    const evs = (map[key] || []).filter((e) => !e.time);
+    const evs = (map[key] || []).filter((e) => !e.time && !inClass(e));
     return `<div class="tt-allday">${evs.map((e) => `<button class="tt-chip" data-id="${e.id}" style="--c:${col(e.color)}">${kindIcon(e.kind || "eval")}${esc(e.title)}</button>`.replace('class="tt-chip"', `class="tt-chip tt-ev ${isDone(e.id) ? "done" : ""}"`)).join("")}</div>`;
   }).join("");
   const cols = days.map((key) => {
     const d = parse(key);
     const fer = holiday(key), work = companyDay(key);
-    const timed = (map[key] || []).filter((e) => e.time).map((e) => {
+    const inside = (map[key] || []).filter(inClass);
+    const timed = (map[key] || []).filter((e) => e.time && !inside.includes(e)).map((e) => {
       const a = Math.max(toMin(e.time), TT_START * 60), b = Math.min(e.end ? toMin(e.end) : toMin(e.time) + 60, TT_END * 60);
       return { e, a, b: Math.max(b, a + 30) };
     }).sort((x, y) => x.a - y.a);
@@ -1003,7 +1018,8 @@ function weekHtml() {
     const blocks = timed.map(({ e, a, b, lane }) => {
       const top = ((a - TT_START * 60) / 60) * 100 / (TT_END - TT_START), h = ((b - a) / 60) * 100 / (TT_END - TT_START);
       return `<button class="tt-block tt-ev ${isDone(e.id) ? "done" : ""} ${e.virtual ? "class" : ""}" data-id="${e.id}" style="--c:${col(e.color)};top:${top}%;height:${h}%;left:calc(${(lane / n) * 100}% + 2px);width:calc(${100 / n}% - 4px)">
-        <b>${esc(e.title)}</b><span>${esc(e.time)}${e.end ? "–" + esc(e.end) : ""}${!e.virtual ? " · " + kindLabel(e.kind || "eval") : ""}</span></button>`;
+        <b>${esc(e.title)}</b><span>${esc(e.time)}${e.end ? "–" + esc(e.end) : ""}${!e.virtual ? " · " + kindLabel(e.kind || "eval") : ""}</span>
+        ${e.virtual ? inside.filter((x) => sameSubject(x.subject, e.subject)).map((x) => `<span class="tt-task tt-ev ${isDone(x.id) ? "done" : ""}" data-id="${x.id}">${kindIcon(x.kind || "eval")}${esc(x.title)}${(x.chapters || []).length ? ` · ${plural(x.chapters.length, "chap.")}` : ""}${(x.attachments || []).length ? " 📎" : ""}</span>`).join("") : ""}</button>`;
     }).join("");
     const now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
     const line = key === today && nowMin > TT_START * 60 && nowMin < TT_END * 60 ? `<div class="tt-now" style="top:${((nowMin - TT_START * 60) / 60) * 100 / (TT_END - TT_START)}%"></div>` : "";
@@ -1407,6 +1423,19 @@ function putWithProgress(url, file, onProgress) {
   });
 }
 
+/** Joint des photos/PDF à un devoir : les photos sont réunies en un PDF, rangé avec le devoir (pas dans les cours). */
+async function attachFiles(eventId, picked, status = () => {}) {
+  const { file } = await preparePdf(picked, status);
+  const base = { event: eventId, by: getName(), name: file.name };
+  const post = (path, body) => api(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const start = await post("files/start", { ...base, size: file.size });
+  await putWithProgress(start.uploadUrl, file, (p) => status(`Envoi ${Math.round(p * 100)} %`));
+  const ev = await post("files/finish", { ...base, key: start.key });
+  upsert(ev);
+  return ev;
+}
+const attachmentRows = (e) => (e.attachments || []).map((f) => `<a class="nav-row" href="/api/files/${f.key}" target="_blank" rel="noopener"><span class="folder">${ICON.folder}</span><span class="nav-body"><b>${esc(f.name)}</b><small>${size(f.size || 0)} · ajouté par ${esc(f.uploadedBy || "?")}</small></span>${ICON.chevron}</a>`).join("");
+
 async function uploadToSlot(chapterId, slot, f, onProgress) {
   const base = { chapter: chapterId, slot, by: getName(), name: f.name };
   const post = (path, body) => api(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -1528,6 +1557,10 @@ function openEdit(ev, date, draft) {
       </div>
       <div id="dateInfo"></div>
       <div>
+        <div class="label">Sujet ou consignes en photo / PDF <span style="color:var(--text2);text-transform:none">(facultatif)</span></div>
+        <label class="group upload" style="cursor:pointer">${ICON.plus}<span id="attachLabel">Joindre une photo ou un PDF</span><input type="file" id="attachInput" accept="application/pdf,image/png,image/jpeg,image/heic,image/webp" multiple hidden></label>
+      </div>
+      <div>
         <div class="label">Chapitres concernés</div>
         <div class="group" id="chapterPick"></div>
       </div>
@@ -1550,11 +1583,32 @@ function openEdit(ev, date, draft) {
       if (d.subject && !d.chapters.every((id) => sameSubject(chapterById(id)?.subject, d.subject))) d.chapters = d.chapters.filter((id) => sameSubject(chapterById(id)?.subject, d.subject));
       drawSubjects();
       drawChapters();
+      if (!classFor(d.date, d.subject) && d.subject && DEADLINE.has(d.kind)) { const n = nextClasses(d.subject)[0]; if (n) { d.date = n.date; field("date").value = n.date; } }
+      autoSlot();
+      drawDateInfo();
     });
   };
   const drawDateInfo = () => {
     const fer = d.date && holiday(d.date);
-    bd.querySelector("#dateInfo").innerHTML = fer ? `<div class="holiday-row" style="padding-left:16px">Attention : ${esc(fer)}, jour férié</div>` : "";
+    const c = classFor(d.date, d.subject);
+    const next = d.subject ? nextClasses(d.subject).filter((x) => x.date !== d.date).slice(0, 3) : [];
+    bd.querySelector("#dateInfo").innerHTML = (fer ? `<div class="holiday-row" style="padding-left:16px">Attention : ${esc(fer)}, jour férié</div>` : "")
+      + (c ? `<div class="class-slot" style="--c:${col(c.color)}">Rangé dans le cours de <b>${esc(c.title)}</b> · ${esc(c.time)}–${esc(c.end)}</div>` : "")
+      + (next.length ? `<div class="quick-dates"><span>Prochains cours :</span>${next.map((x) => `<button type="button" data-qdate="${x.date}">${esc(shortDate(x.date))}</button>`).join("")}</div>` : "");
+    bd.querySelectorAll("[data-qdate]").forEach((b) => b.onclick = () => { d.date = b.dataset.qdate; field("date").value = d.date; autoSlot(); drawDateInfo(); });
+  };
+  /* Si la date tombe sur un cours de la matière : heure et couleur du cours, pour que le devoir s'affiche dans sa case. */
+  const autoSlot = () => {
+    const c = classFor(d.date, d.subject);
+    if (!c) return;
+    if (!d.time || d.time < c.time || d.time >= c.end) { d.time = c.time; field("time").value = c.time; }
+    d.color = c.color;
+    bd.querySelectorAll(".swatch").forEach((x) => x.classList.toggle("on", x.dataset.color === c.color));
+  };
+  let pending = [];
+  bd.querySelector("#attachInput").onchange = (ev) => {
+    pending = [...ev.target.files];
+    bd.querySelector("#attachLabel").textContent = pending.length ? `${pending.length} fichier${pending.length > 1 ? "s" : ""} prêt${pending.length > 1 ? "s" : ""} à envoyer` : "Joindre une photo ou un PDF";
   };
 
   const drawChapters = () => {
@@ -1586,7 +1640,7 @@ function openEdit(ev, date, draft) {
   drawSubjects();
   drawChapters();
   drawDateInfo();
-  field("date").addEventListener("change", () => { d.date = field("date").value; drawDateInfo(); });
+  field("date").addEventListener("change", () => { d.date = field("date").value; autoSlot(); drawDateInfo(); });
 
   bd.querySelectorAll("[data-kind]").forEach((b) => b.onclick = () => {
     d.kind = b.dataset.kind;
@@ -1608,6 +1662,7 @@ function openEdit(ev, date, draft) {
       state.month = firstOfMonth(parse(saved.date));
       state.weekStart = mondayOf(parse(saved.date));
       upsert(saved);
+      if (pending.length) await attachFiles(saved.id, pending, (m) => { btn.target.innerHTML = `<span class="spinner"></span>`; toast(m); });
       openDetail(saved.id);
       toast(ev ? "Modifié" : `${kindLabel(saved.kind)} ajouté${["eval", "revision"].includes(saved.kind) ? "e" : ""}`);
     } catch (err) { toast(err.message); btn.target.textContent = ev ? "OK" : "Ajouter"; }
@@ -1639,6 +1694,11 @@ function openDetail(id) {
       </div>
       <button class="btn-row ${done ? "" : "blue"}" data-act="done">${done ? "Remettre à faire" : "Marquer comme fait"}</button>
       ${e.notes ? `<div><div class="label">Notes</div><div class="group notes">${esc(e.notes)}</div></div>` : ""}
+      ${classFor(e.date, e.subject) ? `<div class="class-slot" style="--c:${col(e.color)}">Pendant le cours de <b>${esc(classFor(e.date, e.subject).title)}</b> · ${esc(classFor(e.date, e.subject).time)}–${esc(classFor(e.date, e.subject).end)}</div>` : ""}
+      <div>
+        <div class="label">Sujet et fichiers (${(e.attachments || []).length})</div>
+        <div class="group">${attachmentRows(e)}<label class="upload" style="cursor:pointer">${ICON.plus}<span>Ajouter une photo ou un PDF</span><input type="file" data-act="attach" accept="application/pdf,image/png,image/jpeg,image/heic,image/webp" multiple hidden></label></div>
+      </div>
       <div>
         <div class="label">Chapitres (${linked.length})</div>
         ${linked.length ? linked.map((c) => `
@@ -1655,6 +1715,12 @@ function openDetail(id) {
     </div>`);
 
   bd.querySelector("[data-act=close]").onclick = closeSheet;
+  bd.querySelector("[data-act=attach]").onchange = async (x) => {
+    const files = [...x.target.files];
+    if (!files.length) return;
+    try { await attachFiles(e.id, files, (m) => toast(m)); toast("Fichier ajouté"); openDetail(e.id); render(); }
+    catch (err) { toast(err.message); }
+  };
   bd.querySelector("[data-act=edit]").onclick = () => openEdit(e);
   bd.querySelector("[data-act=done]").onclick = async () => { await toggleDone(e.id); openDetail(e.id); };
   bd.querySelectorAll("[data-chapter]").forEach((b) => b.onclick = () => openChapter(b.dataset.chapter, () => openDetail(e.id), "Retour"));
@@ -2109,6 +2175,15 @@ async function disablePush() {
 
 const REMINDER_LABEL = { 1: "1 jour avant", 2: "2 jours avant", 7: "1 semaine avant" };
 const switchHtml = (name, on, label, sub) => `<label class="set-row"><span>${label}${sub ? `<small>${sub}</small>` : ""}</span><span class="switch"><input type="checkbox" data-pref="${name}" ${on ? "checked" : ""}><i></i></span></label>`;
+
+/** Réglages > Devoirs passés : les sujets joints restent disponibles une fois la date passée. */
+function renderPastHomework() {
+  const today = iso(new Date());
+  const past = state.events.filter((e) => e.date < today && (e.attachments || []).length).sort((a, b) => b.date.localeCompare(a.date));
+  $("#page-settings").insertAdjacentHTML("beforeend", `<div class="section"><h2>Devoirs passés</h2>
+    ${past.length ? past.map((e) => `<div class="label" style="margin-top:12px">${esc(e.title)} · ${esc(shortDate(e.date))}${e.subject ? " · " + esc(e.subject.split(" · ")[0]) : ""}</div><div class="group">${attachmentRows(e)}</div>`).join("")
+      : `<div class="group"><div class="hint">Les sujets joints aux devoirs apparaîtront ici une fois la date passée.</div></div>`}</div>`);
+}
 
 function renderSettings() {
   const p = state.profile;

@@ -144,6 +144,32 @@ const publicProfile = (p) => ({
   pushDevices: (p.subs || []).length,
 });
 
+/** Pièces jointes d'un devoir (sujet en photo ou PDF) : rangées avec l'événement, pas dans les cours. */
+async function eventAttachment(step, body, by) {
+  const ev = await events().get(String(body.event || ""), { type: "json" });
+  if (!ev) return json({ error: "Événement introuvable" }, 404);
+  if (step === "start") {
+    const size = Number(body.size) || 0;
+    if (size <= 0) return json({ error: "Fichier vide" }, 400);
+    if (size > MAX_PDF) return json({ error: "PDF trop lourd (max 100 Mo)" }, 413);
+    if ((ev.attachments || []).length >= 10) return json({ error: "10 fichiers maximum par devoir" }, 400);
+    const key = randomUUID();
+    return json({ key, uploadUrl: signedUrl("PUT", key, 30 * 60) });
+  }
+  const key = String(body.key || "");
+  if (!UUID.test(key)) return json({ error: "Fichier invalide" }, 400);
+  if ((ev.attachments || []).some((f) => f.key === key)) return json(ev);
+  const head = await fetch(signedUrl("GET", key, 300), { method: "HEAD" });
+  if (!head.ok) return json({ error: head.status === 404 ? "Le fichier n'a pas été reçu" : "Vérification impossible, réessaie" }, 400);
+  let name = cleanText(body.name, 120) || "sujet.pdf";
+  if (!name.toLowerCase().endsWith(".pdf")) name += ".pdf";
+  await pdfs().setJSON(`r2:${key}`, { name, eventId: ev.id });
+  const file = { key, name, size: Number(head.headers.get("content-length")) || 0, uploadedBy: by, uploadedAt: new Date().toISOString() };
+  const updated = stamp({ ...ev, attachments: [...(ev.attachments || []), file] }, by, "a joint un fichier");
+  await events().setJSON(ev.id, updated);
+  return json(updated, 201);
+}
+
 async function notifyNewEvent(ev, authorId) {
   if (!pushReady()) return;
   const all = await listAll(profiles());
@@ -313,6 +339,7 @@ export default async (req) => {
 
     if (method === "DELETE") {
       if (!cleanName(url.searchParams.get("by"))) return json({ error: "Ton nom est obligatoire" }, 400);
+      await Promise.all((existing.attachments || []).map((f) => deleteR2(f.key).catch(() => {})));
       await events().delete(id);
       return json({ ok: true });
     }
@@ -381,6 +408,7 @@ export default async (req) => {
       const body = await req.json().catch(() => ({}));
       const by = cleanName(body.by);
       if (!by) return json({ error: "Ton nom est obligatoire" }, 400);
+      if (body.event) return eventAttachment(id, body, by);
       if (!(body.slot in SLOTS)) return json({ error: "Type de PDF inconnu" }, 400);
       const ch = await chapters().get(String(body.chapter || ""), { type: "json" });
       if (!ch) return json({ error: "Chapitre introuvable" }, 404);
@@ -407,6 +435,17 @@ export default async (req) => {
       await chapters().setJSON(ch.id, updated);
       if (previous) await deleteR2(previous.key);
       return json(updated, 201);
+    }
+
+    if (method === "DELETE" && id && url.searchParams.get("event")) {
+      const by = cleanName(url.searchParams.get("by"));
+      if (!by) return json({ error: "Ton nom est obligatoire" }, 400);
+      const ev = await events().get(url.searchParams.get("event"), { type: "json" });
+      if (!ev || !(ev.attachments || []).some((f) => f.key === id)) return json({ error: "Fichier introuvable" }, 404);
+      await deleteR2(id);
+      const updated = stamp({ ...ev, attachments: ev.attachments.filter((f) => f.key !== id) }, by, "a retiré une pièce jointe");
+      await events().setJSON(ev.id, updated);
+      return json(updated);
     }
 
     if (method === "DELETE" && id) {
