@@ -569,7 +569,7 @@ struct RevisionContent: View {
             else if !model.isSujetSlot(event) {
                 Text("Relis le cours, fais-toi une fiche et récite sans regarder." + (model.revMode == "sujets" ? " En fin d'après-midi, tu feras les sujets de ces chapitres." : "")).font(.callout)
                 ForEach(picks, id: \.self) { p in
-                    HStack { pickRow(p); Spacer(); if let f = p.chapter?.file("cours") { Button("Fiche de cours") { open(f) } } }
+                    HStack { pickRow(p); Spacer(); if let f = p.chapter?.file("cours") { Button("Fiche de cours") { open(f) }; Button { Task { do { try Reader.shared.read(url: try await model.download(f), title: p.chapter?.title ?? "Cours") } catch { model.show(error.localizedDescription) } } } label: { Label("Écouter", systemImage: "headphones") } } }
                 }
             } else {
                 Text("Les sujets des chapitres révisés ce matin. Fais-les sans regarder la correction.").font(.callout)

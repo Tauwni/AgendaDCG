@@ -43,6 +43,7 @@ public class MainWindow : Window
         Theme.Chrome(this);
         try { Icon = new BitmapImage(new Uri("pack://application:,,,/icon.png")); } catch { }
         root.Children.Add(content);
+        root.Children.Add(Reader.Bar);
         root.Children.Add(toast);
         Content = root;
         S.Changed += () => Dispatcher.Invoke(Render);

@@ -87,7 +87,7 @@ public static class Dialogs
                     foreach (var p in picks)
                     {
                         body.Children.Add(Row(p));
-                        if (p.Chapter?.Files.GetValueOrDefault("cours") is { } f) { var fb = Btn("Fiche de cours", () => Open(f)); fb.HorizontalAlignment = HorizontalAlignment.Left; fb.Margin = new Thickness(0, 0, 0, 10); body.Children.Add(fb); }
+                        if (p.Chapter?.Files.GetValueOrDefault("cours") is { } f) { var chTitle = p.Chapter.Title; var fb = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) }; fb.Children.Add(Btn("Fiche de cours", () => Open(f))); fb.Children.Add(Btn("🎧 Écouter", async () => await Try(async () => { var path = await S.Download(f); Reader.Read(path, chTitle); }))); body.Children.Add(fb); }
                     }
                 }
                 else
@@ -302,6 +302,7 @@ public static class Dialogs
                     var path = await S.Download(f);
                     Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
                 })));
+                buttons.Children.Add(Btn("🎧", async () => await Try(async () => { Toast("Préparation de la lecture…"); var path = await S.Download(f); Reader.Read(path, $"{label} · {chapter.Title}"); })));
                 if (editable)
                 {
                     buttons.Children.Add(IconBtn("", () => Pick(chapter, slot), "Remplacer"));

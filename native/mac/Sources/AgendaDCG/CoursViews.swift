@@ -92,6 +92,7 @@ struct ChapterFiles: View {
                         if busy == slot.id { ProgressView().controlSize(.small) }
                         if let f {
                             Button("Ouvrir") { open(f) }
+                            Button { listen(f, "\(slot.label) · \(current.title)") } label: { Image(systemName: "headphones") }.help("Écouter")
                             if editable {
                                 Menu {
                                     Button("Remplacer…") { importing = slot.id }
@@ -133,6 +134,9 @@ struct ChapterFiles: View {
         busy = nil
     }
 
+    func listen(_ f: PdfFile, _ title: String) {
+        Task { do { try Reader.shared.read(url: try await model.download(f), title: title) } catch { model.show(error.localizedDescription) } }
+    }
     func open(_ f: PdfFile) {
         Task {
             do { PdfWindow.show(url: try await model.download(f), title: f.name) }

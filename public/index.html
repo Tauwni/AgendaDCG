@@ -459,6 +459,7 @@ a.nav-row { color: inherit; text-decoration: none; }
 .link.small { font-size: 15px; margin-top: 10px; }
 </style>
 <script src="/pdf-tools.js" defer></script>
+<script src="/tts.js" defer></script>
 </head>
 <body>
 
@@ -722,7 +723,7 @@ function revisionDetail(c) {
   if (!isSujetSlot(c)) {
     const after = revMode() === "sujets" ? " En fin d'après-midi, tu feras les sujets de ces chapitres." : "";
     return modeLine + `<div class="detail-sub" style="margin-bottom:8px">Relis le cours, fais-toi une fiche et récite sans regarder.${after}</div>`
-      + picks.map((p) => `<div class="label">${esc(pickLabel(p))} · ${esc(p.why)}</div><div class="group">${fileOf(p.chapter, "cours") ? fileLink(fileOf(p.chapter, "cours"), "Fiche de cours") : `<div class="hint">Pas de fiche de cours en ligne : reprends ton cours.</div>`}</div>`).join("");
+      + picks.map((p) => `<div class="label">${esc(pickLabel(p))} · ${esc(p.why)}</div><div class="group">${fileOf(p.chapter, "cours") ? fileLink(fileOf(p.chapter, "cours"), "Fiche de cours") + `<button class="btn-row" data-listen="${esc(fileOf(p.chapter, "cours").key)}" data-title="${esc(pickLabel(p))}">🎧 Écouter la fiche</button>` : `<div class="hint">Pas de fiche de cours en ligne : reprends ton cours.</div>`}</div>`).join("");
   }
   const withSujet = picks.filter((p) => fileOf(p.chapter, "sujet")), without = picks.filter((p) => !fileOf(p.chapter, "sujet"));
   return modeLine + `<div class="detail-sub" style="margin-bottom:8px">Les sujets des chapitres révisés ce matin. Fais-les sans regarder la correction.</div>`
@@ -788,6 +789,14 @@ const dayNote = (key) => holiday(key) || (companyDay(key) ? "Entreprise" : "");
 const dayEvents = (key) => [...classesOn(key), ...state.events.filter((e) => e.date === key)].sort((a, b) => (a.time || "").localeCompare(b.time || ""));
 
 function getName() { return state.profile?.name || (() => { try { return localStorage.getItem("agenda_name") || ""; } catch { return ""; } })(); }
+
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-listen]");
+  if (!b) return;
+  e.preventDefault(); e.stopPropagation();
+  try { await window.Lecteur.read(`/api/files/${encodeURIComponent(b.dataset.listen)}`, b.dataset.title || "Cours", toast); }
+  catch (err) { toast(err.message); }
+}, true);
 
 function toast(msg) {
   const t = document.createElement("div");
@@ -1892,6 +1901,7 @@ function slotRows(ch, { editable }) {
       return `<div class="file">
         <span class="ico">PDF</span>
         <a href="/api/files/${encodeURIComponent(f.key)}" target="_blank" rel="noopener"><div class="n">${label}</div><div class="m">${esc(f.name)} · ${size(f.size)} · ${esc(f.uploadedBy)}</div></a>
+        <button class="mini" data-listen="${esc(f.key)}" data-title="${esc(label + " · " + ch.title)}" aria-label="Écouter ${label}" title="Écouter">🎧</button>
         ${f.locked ? `<span class="mini" title="PDF officiel, non supprimable">🔒</span>` : editable ? `<label class="mini" title="Remplacer">Remplacer<input type="file" accept="${ACCEPT}" multiple data-slot="${k}"></label>
         <button class="del" data-del="${k}" aria-label="Supprimer ${label}">${ICON.close}</button>` : ""}
       </div>`;

@@ -1,10 +1,10 @@
 // Hors ligne : la page et les dernières données restent lisibles sans réseau,
 // plus les 3 derniers PDF ouverts (pas plus, pour ne pas remplir le téléphone).
-const SHELL = "agenda-shell-v1", DATA = "agenda-data-v1", PDF = "agenda-pdf-v1", MAX_PDF = 3;
+const SHELL = "agenda-shell-v2", DATA = "agenda-data-v1", PDF = "agenda-pdf-v1", MAX_PDF = 3;
 const DATA_PATHS = ["/api/events", "/api/chapters", "/api/profile", "/schedule.json", "/api/me"];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(SHELL).then((c) => c.addAll(["/", "/pdf-tools.js", "/manifest.webmanifest", "/icons/icon-192.png"])).catch(() => {}).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(SHELL).then((c) => c.addAll(["/", "/pdf-tools.js", "/tts.js", "/manifest.webmanifest", "/icons/icon-192.png"])).catch(() => {}).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
 

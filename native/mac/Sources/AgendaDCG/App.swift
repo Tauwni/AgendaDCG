@@ -76,6 +76,7 @@ struct RootView: View {
                 }
             }
         }
+        .overlay(alignment: .bottom) { ReaderBar() }
         .overlay(alignment: .bottom) {
             if let t = model.toast {
                 Text(t).padding(.horizontal, 16).padding(.vertical, 10)
