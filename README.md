@@ -344,3 +344,26 @@ AgendaDCG/
 <br>
 <sub>Fait pour la classe de DCG</sub>
 </div>
+
+## Organisation du site (dossier `public/`)
+
+| Fichier | Rôle |
+| --- | --- |
+| `index.html` | Squelette de la page : écran de connexion, onglets, chargement des fichiers |
+| `app.css` | Toute la mise en forme |
+| `js/core.js` | État, outils communs, appels au serveur |
+| `js/reviser.js` | Onglet Réviser, niveaux par matière, méthodes et créneaux de révision |
+| `js/session.js` | Emploi du temps, connexion, onglets, statut « fait », carte d'un événement |
+| `js/today.js` | Écran Aujourd'hui |
+| `js/agenda.js` | Agenda : mois, semaine, cahier de texte |
+| `js/events.js` | Devoirs et évaluations : création, modification, fiche, pièces jointes |
+| `js/cours.js` | Bibliothèque de cours, PDF, recherche dans le texte |
+| `js/settings.js` | Notifications, mise à jour, Réglages, démarrage |
+| `tts.js` | Lecture à voix haute des PDF |
+| `pdf-tools.js` | Compression et conversion des PDF avant envoi |
+| `sw.js` | Mode hors ligne et notifications push |
+| `admin.html` | Tableau de bord privé (statistiques, emploi du temps, corbeille) |
+
+Les fichiers de `js/` sont de simples scripts chargés dans l'ordre ci-dessus : ils partagent les mêmes variables. Si on ajoute un fichier, il faut l'ajouter dans `index.html` **et** dans la liste `ASSETS` de `sw.js`.
+
+Le tag git `avant-refonte-accueil` garde l'état d'avant la refonte de l'accueil et de l'onglet Réviser (v2.1.8).

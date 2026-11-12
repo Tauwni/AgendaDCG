@@ -11,6 +11,7 @@ struct ReviserView: View {
         let next = model.events.filter { $0.isDeadline && $0.date >= today && !model.isDone($0) }.sorted { $0.sortKey < $1.sortKey }.prefix(4)
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
+                RevisionProgram()
                 HStack(alignment: .top, spacing: 18) {
                     AsyncImage(url: URL(string: "https://objectif-dcg.netlify.app/icon-192.png")) { img in img.resizable() } placeholder: { Color.secondary.opacity(0.15) }
                         .frame(width: 72, height: 72)

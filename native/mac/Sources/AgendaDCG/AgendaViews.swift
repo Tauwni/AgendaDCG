@@ -65,6 +65,14 @@ struct TodayView: View {
                 section("Aujourd'hui", todays, empty: model.isCompanyDay(today) ? "Journée en entreprise, pas de cours." : "Rien de prévu aujourd'hui.")
                 if !late.isEmpty { section("Pas encore fait", late, showDate: true) }
                 section("À venir", upcoming, empty: "Aucune échéance dans les 3 prochaines semaines.", showDate: true)
+                if let slot = model.nextRevisionSlots(1).first {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(slot.date == today ? "Ta révision du jour" : "Ta prochaine révision").font(.title2.bold())
+                        RevisionSlotCard(slot: slot, listen: true)
+                    }
+                }
+                let tomorrow = model.events(on: iso(addDays(Date(), 1))).filter { $0.revision != true }
+                if !tomorrow.isEmpty { section("Demain", tomorrow) }
             }
             .padding(28)
             .frame(maxWidth: 760, alignment: .leading)
@@ -569,7 +577,7 @@ struct RevisionContent: View {
             else if !model.isSujetSlot(event) {
                 Text("Relis le cours, fais-toi une fiche et récite sans regarder." + (model.revMode == "sujets" ? " En fin d'après-midi, tu feras les sujets de ces chapitres." : "")).font(.callout)
                 ForEach(picks, id: \.self) { p in
-                    HStack { pickRow(p); Spacer(); if let f = p.chapter?.file("cours") { Button("Fiche de cours") { open(f) }; Button { Task { do { try Reader.shared.read(url: try await model.download(f), title: p.chapter?.title ?? "Cours") } catch { model.show(error.localizedDescription) } } } label: { Label("Écouter", systemImage: "headphones") } } }
+                    HStack { pickRow(p); Spacer(); if let f = p.chapter?.file("cours") { Button("Fiche de cours") { open(f) }; Button { Task { do { try Reader.shared.read(url: try await model.download(f), title: p.chapter?.title ?? "Cours", key: f.key) } catch { model.show(error.localizedDescription) } } } label: { Label("Écouter", systemImage: "headphones") } } }
                 }
             } else {
                 Text("Les sujets des chapitres révisés ce matin. Fais-les sans regarder la correction.").font(.callout)

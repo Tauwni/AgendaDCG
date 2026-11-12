@@ -1,10 +1,11 @@
 // Hors ligne : la page et les dernières données restent lisibles sans réseau,
 // plus les 3 derniers PDF ouverts (pas plus, pour ne pas remplir le téléphone).
-const SHELL = "agenda-shell-v2", DATA = "agenda-data-v1", PDF = "agenda-pdf-v1", MAX_PDF = 3;
+const SHELL = "agenda-shell-v3", DATA = "agenda-data-v1", PDF = "agenda-pdf-v1", MAX_PDF = 3;
+const ASSETS = ["/pdf-tools.js", "/tts.js", ...["core", "reviser", "session", "today", "agenda", "events", "cours", "settings"].map((n) => `/js/${n}.js`)];
 const DATA_PATHS = ["/api/events", "/api/chapters", "/api/profile", "/schedule.json", "/api/me"];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(SHELL).then((c) => c.addAll(["/", "/pdf-tools.js", "/tts.js", "/manifest.webmanifest", "/icons/icon-192.png"])).catch(() => {}).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(SHELL).then((c) => c.addAll(["/", "/app.css", ...ASSETS, "/manifest.webmanifest", "/icons/icon-192.png"])).catch(() => {}).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
 
@@ -50,6 +51,7 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/files/")) return event.respondWith(pdf(req));
   if (DATA_PATHS.some((p) => url.pathname === p || url.pathname.startsWith(p + "/"))) return event.respondWith(networkFirst(req, DATA));
+  if (url.pathname === "/app.css" || ASSETS.includes(url.pathname)) return event.respondWith(networkFirst(req, SHELL));
   if (req.mode === "navigate" && (url.pathname === "/" || url.pathname === "/index.html")) return event.respondWith(networkFirst(new Request("/"), SHELL));
 });
 

@@ -61,6 +61,7 @@ public class PdfFile
     public string Key { get; set; } = "";
     public string Name { get; set; } = "";
     public long? Size { get; set; }
+    public bool Locked { get; set; }
 }
 
 public class Chapter
@@ -341,12 +342,6 @@ public class Store
         var done = !IsDone(ev);
         Profile = await Api.Call<Profile>(HttpMethod.Put, "profile/done", new { @event = ev.Id, done });
         Notifier.Schedule(Events, Profile);
-        Notify();
-    }
-
-    public async Task SaveGrades(List<Grade> grades)
-    {
-        Profile = await Api.Call<Profile>(HttpMethod.Put, "profile/grades", new { grades });
         Notify();
     }
 

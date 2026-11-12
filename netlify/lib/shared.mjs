@@ -13,6 +13,15 @@ export const KINDS = {
 
 export const events = () => getStore({ name: "events", consistency: "strong" });
 export const profiles = () => getStore({ name: "profiles", consistency: "strong" });
+export const trash = () => getStore({ name: "trash", consistency: "strong" });
+/** Efface pour de bon ce qui est dans la corbeille depuis plus de 7 jours. */
+export async function purgeTrash(deleteFile) {
+  for (const e of await listAll(trash())) {
+    if (Date.now() - Date.parse(e.deletedAt || 0) < 7 * 864e5) continue;
+    await Promise.all((e.attachments || []).map((f) => deleteFile(f.key).catch(() => {})));
+    await trash().delete(e.id);
+  }
+}
 export const pushLog = () => getStore({ name: "push-log", consistency: "strong" });
 
 export async function listAll(store) {

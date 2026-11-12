@@ -93,7 +93,9 @@ struct ChapterFiles: View {
                         if let f {
                             Button("Ouvrir") { open(f) }
                             Button { listen(f, "\(slot.label) · \(current.title)") } label: { Image(systemName: "headphones") }.help("Écouter")
-                            if editable {
+                            if f.locked == true {
+                                Image(systemName: "lock.fill").foregroundStyle(.secondary).help("PDF officiel : ni supprimable ni remplaçable")
+                            } else if editable {
                                 Menu {
                                     Button("Remplacer…") { importing = slot.id }
                                     Button("Supprimer", role: .destructive) { Task { await model.deleteFile(f, chapter: current, slot: slot.id) } }
@@ -135,7 +137,7 @@ struct ChapterFiles: View {
     }
 
     func listen(_ f: PdfFile, _ title: String) {
-        Task { do { try Reader.shared.read(url: try await model.download(f), title: title) } catch { model.show(error.localizedDescription) } }
+        Task { do { try Reader.shared.read(url: try await model.download(f), title: title, key: f.key) } catch { model.show(error.localizedDescription) } }
     }
     func open(_ f: PdfFile) {
         Task {

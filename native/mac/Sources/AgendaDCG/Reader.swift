@@ -13,10 +13,13 @@ final class Reader: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     var chunks: [String] = []
     private let synth = AVSpeechSynthesizer()
     private var token = 0
+    private var key = ""
+    var line: String { chunks[safe: pos] ?? "" }
+    private func save() { if !key.isEmpty { UserDefaults.standard.set(pos, forKey: "tts-pos:" + key) } }
 
     override init() { super.init(); synth.delegate = self }
 
-    func read(url: URL, title: String) throws {
+    func read(url: URL, title: String, key: String = "") throws {
         guard let doc = PDFDocument(url: url) else { throw err("PDF illisible") }
         var text = doc.string ?? ""
         text = text.replacingOccurrences(of: #"(\w)-\n(\w)"#, with: "$1$2", options: .regularExpression)
@@ -24,7 +27,10 @@ final class Reader: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
             .replacingOccurrences(of: #"([^.!?:;\n])\n(?=[a-zà-ÿ])"#, with: "$1 ", options: .regularExpression)
         chunks = Reader.split(text)
         guard chunks.joined().count >= 80 else { throw err("Ce PDF est une image (scan) : pas de texte à lire") }
-        self.title = title; pos = 0; play()
+        self.title = title; self.key = key
+        let saved = UserDefaults.standard.integer(forKey: "tts-pos:" + key)
+        pos = (!key.isEmpty && saved > 0 && saved < chunks.count - 1) ? saved : 0 // reprise là où on s'était arrêté
+        play()
     }
 
     static func split(_ text: String) -> [String] {
@@ -47,7 +53,8 @@ final class Reader: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     }
 
     private func speakCurrent() {
-        guard pos < chunks.count else { stop(); return }
+        guard pos < chunks.count else { pos = 0; stop(); return }
+        save()
         let u = AVSpeechUtterance(string: chunks[pos])
         u.voice = Reader.voice
         u.rate = AVSpeechUtteranceDefaultSpeechRate * (0.85 + (rate - 1) * 0.5)
@@ -56,7 +63,7 @@ final class Reader: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
 
     func play() { token += 1; synth.stopSpeaking(at: .immediate); playing = true; speakCurrent() }
     func pause() { token += 1; playing = false; synth.stopSpeaking(at: .immediate) }
-    func stop() { token += 1; playing = false; synth.stopSpeaking(at: .immediate); title = nil }
+    func stop() { save(); token += 1; playing = false; synth.stopSpeaking(at: .immediate); title = nil }
     func jump(_ d: Int) { pos = max(0, min(chunks.count - 1, pos + d)); if playing { play() } }
     func nextRate() {
         let steps: [Float] = [0.8, 1, 1.25, 1.5, 1.75, 2]
@@ -81,6 +88,7 @@ struct ReaderBar: View {
     @ObservedObject var r = Reader.shared
     var body: some View {
         if let title = r.title {
+            VStack(spacing: 4) {
             HStack(spacing: 10) {
                 Text("🎧")
                 Text(title).lineLimit(1).frame(maxWidth: 260, alignment: .leading)
@@ -91,9 +99,11 @@ struct ReaderBar: View {
                 Button("×\(r.rate.formatted())") { r.nextRate() }.help("Vitesse")
                 Button { r.stop() } label: { Image(systemName: "xmark") }.help("Arrêter")
             }
+            Text(r.line).font(.caption).foregroundStyle(.secondary).lineLimit(2).frame(maxWidth: 520)
+            }
             .buttonStyle(.borderless)
             .padding(.horizontal, 14).padding(.vertical, 8)
-            .background(.regularMaterial, in: Capsule())
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
             .shadow(radius: 8)
             .padding(.bottom, 16)
         }

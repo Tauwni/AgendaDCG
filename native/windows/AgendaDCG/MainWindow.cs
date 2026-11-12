@@ -273,6 +273,14 @@ public class MainWindow : Window
         if (late.Count > 0) Section("Pas encore fait", late, "", true);
         var upcoming = S.Events.Where(e => e.IsDeadline && string.CompareOrdinal(e.Date, today) > 0 && (Data.Parse(e.Date) - DateTime.Today).Days <= 21).OrderBy(e => e.SortKey).ToList();
         Section("À venir", upcoming, "Aucune échéance dans les 3 prochaines semaines.", true);
+        if (NextRevisionSlots(1).FirstOrDefault() is { } slot)
+        {
+            var t = T(slot.Date == today ? "Ta révision du jour" : "Ta prochaine révision", 20, FontWeights.Bold); t.Margin = new Thickness(0, 22, 0, 8);
+            body.Children.Add(t);
+            body.Children.Add(RevisionSlotCard(slot, true));
+        }
+        var tomorrow = S.On(Data.Iso(DateTime.Today.AddDays(1))).Where(e => !e.Revision).ToList();
+        if (tomorrow.Count > 0) Section("Demain", tomorrow, "", false);
         return Page("Aujourd'hui", Scroll(body), Btn("+ Ajouter", () => Dialogs.EventEditor(null, today), primary: true));
     }
 
@@ -552,57 +560,39 @@ public class MainWindow : Window
         return Page("Cours", g);
     }
 
-    // ---------- Notes ----------
-    UIElement NotesPage()
-    {
-        var all = S.Profile?.Grades ?? new();
-        var subjects = Data.Subjects.Where(s => all.Any(g => g.Subject == s)).Concat(all.Select(g => g.Subject).Distinct().Except(Data.Subjects)).ToList();
-        var avgs = subjects.Select(s => Data.Average(all.Where(g => g.Subject == s))).Where(a => a != null).Select(a => a!.Value).ToList();
-        var body = new StackPanel();
-        body.Children.Add(T("Moyenne générale", 14, null, Theme.Text2));
-        body.Children.Add(T(avgs.Count == 0 ? "–" : Data.Num(avgs.Average(), 2), 44, FontWeights.Bold));
-        body.Children.Add(T("Notes privées : toi seul les vois.", 12, null, Theme.Text2));
-        if (subjects.Count == 0) body.Children.Add(T("Ajoute tes notes pour suivre tes moyennes.", 14, null, Theme.Text2));
-        var wrap = new WrapPanel { Margin = new Thickness(0, 12, 0, 0) };
-        foreach (var s in subjects)
-        {
-            var gs = all.Where(g => g.Subject == s).OrderBy(g => g.Date).ToList();
-            var head = new DockPanel();
-            var avg = T(Data.Average(gs) is { } a ? Data.Num(a, 2) : "–", 20, FontWeights.Bold); DockPanel.SetDock(avg, Dock.Right);
-            head.Children.Add(avg); head.Children.Add(T(s, 14, FontWeights.SemiBold));
-            var chart = Chart(gs, 300, 70);
-            var card = Card(V(8, head, chart, T($"{gs.Count} note{(gs.Count > 1 ? "s" : "")}", 12, null, Theme.Text2)));
-            card.Width = 330; card.Margin = new Thickness(0, 0, 14, 14); card.Cursor = Cursors.Hand;
-            var sub = s;
-            card.MouseLeftButtonUp += (_, _) => Dialogs.SubjectDetail(sub);
-            wrap.Children.Add(card);
-        }
-        body.Children.Add(wrap);
-        return Page("Notes", Scroll(body), Btn("+ Ajouter une note", () => Dialogs.GradeEditor(null, null), primary: true));
-    }
-
-    public static Canvas Chart(List<Grade> gs, double w, double h)
-    {
-        var c = new Canvas { Width = w, Height = h, ClipToBounds = false };
-        if (gs.Count == 0) return c;
-        double X(int i) => gs.Count == 1 ? w / 2 : 6 + i * (w - 12) / (gs.Count - 1);
-        double Y(double v) => h - 4 - v / 20 * (h - 8);
-        if (Data.Average(gs) is { } avg)
-            c.Children.Add(new Line { X1 = 0, X2 = w, Y1 = Y(avg), Y2 = Y(avg), Stroke = Theme.Text2, StrokeThickness = 1, StrokeDashArray = new DoubleCollection { 4, 3 } });
-        var poly = new Polyline { Stroke = Theme.Accent, StrokeThickness = 2 };
-        for (var i = 0; i < gs.Count; i++) poly.Points.Add(new Point(X(i), Y(gs[i].On20)));
-        c.Children.Add(poly);
-        for (var i = 0; i < gs.Count; i++)
-        {
-            var dot = new Ellipse { Width = 7, Height = 7, Fill = gs[i].Category == "entrainement" ? Theme.Card : Theme.Accent, Stroke = Theme.Accent, StrokeThickness = 1.5, ToolTip = $"{Data.Num(gs[i].Value, 2)}/{Data.Num(gs[i].OutOf)} · {gs[i].Title}" };
-            Canvas.SetLeft(dot, X(i) - 3.5); Canvas.SetTop(dot, Y(gs[i].On20) - 3.5);
-            c.Children.Add(dot);
-        }
-        return c;
-    }
-
     // ---------- Réviser (Objectif DCG) ----------
     public static void OpenRevise() => Process.Start(new ProcessStartInfo(Api.Revise.ToString()) { UseShellExecute = true });
+
+    /// Prochains créneaux de révision (aujourd'hui compris, pas encore terminés), sur 8 jours.
+    List<AgendaEvent> NextRevisionSlots(int max)
+    {
+        var hm = DateTime.Now.ToString("HH:mm"); var list = new List<AgendaEvent>();
+        for (var i = 0; i < 8; i++)
+            foreach (var c in S.On(Data.Iso(DateTime.Today.AddDays(i))))
+                if (c.Revision && (i > 0 || string.CompareOrdinal(c.End ?? "24:00", hm) > 0) && list.Count < max) list.Add(c);
+        return list;
+    }
+
+    UIElement RevisionSlotCard(AgendaEvent slot, bool listen)
+    {
+        var picks = S.RevisionFor(slot);
+        var col = new StackPanel();
+        col.Children.Add(T(S.RevTitle(slot), 15, FontWeights.SemiBold));
+        col.Children.Add(T($"{(slot.Date == Data.Iso(DateTime.Today) ? "Aujourd'hui" : Data.Cap(Data.LongDate(slot.Date)))} · {slot.Time}–{slot.End}", 12, null, Theme.Text2));
+        if (!S.HasLevels) col.Children.Add(T("✨ Clique pour personnaliser tes révisions", 13, null, Theme.Text2));
+        foreach (var p in picks) col.Children.Add(T($"{(S.IsSujetSlot(slot) ? "✏️" : "📖")} {p.Label}", 13));
+        if (listen && !S.IsSujetSlot(slot) && picks.FirstOrDefault(p => p.Chapter?.File("cours") != null) is { } pick)
+        {
+            var f = pick.Chapter!.File("cours")!;
+            var b = Btn("🎧 Écouter la fiche", async () => await Try(async () => { var path = await S.Download(f); Reader.Read(path, pick.Label, f.Key); }));
+            b.HorizontalAlignment = HorizontalAlignment.Left; b.Margin = new Thickness(0, 8, 0, 0);
+            col.Children.Add(b);
+        }
+        var card = Card(col, 14);
+        card.Margin = new Thickness(0, 0, 0, 8); card.Cursor = Cursors.Hand;
+        card.MouseLeftButtonUp += (_, ev) => { if (ev.OriginalSource is not System.Windows.Controls.Primitives.ButtonBase && !(ev.OriginalSource is FrameworkElement fe && fe.TemplatedParent is Button)) Dialogs.ClassDetail(slot); };
+        return card;
+    }
 
     UIElement ReviserPage()
     {
@@ -615,6 +605,16 @@ public class MainWindow : Window
         DockPanel.SetDock(logo, Dock.Left); row.Children.Add(logo);
         row.Children.Add(V(0, T("Objectif DCG", 20, FontWeights.Bold), desc, open));
         var body = new StackPanel { MaxWidth = 760, HorizontalAlignment = HorizontalAlignment.Left };
+        var slots = NextRevisionSlots(4);
+        if (slots.Count > 0)
+        {
+            var ph = T("Mon programme de révision", 20, FontWeights.Bold); ph.Margin = new Thickness(0, 0, 0, 8); body.Children.Add(ph);
+            if (S.HasLevels) body.Children.Add(new TextBlock { Text = $"Ma méthode : {(S.RevMode == "sujets" ? "révision le matin, sujets le soir" : "révision seule")}{(S.RevMode == S.AdvisedMode ? " (conseillée pour toi)" : "")}.", Foreground = Theme.Text2, Margin = new Thickness(0, 0, 0, 8) });
+            foreach (var sl in slots) body.Children.Add(RevisionSlotCard(sl, false));
+            var lv = Btn(S.HasLevels ? "Modifier ma méthode et mon niveau" : "Personnaliser mes révisions (1 min)", () => { Dialogs.LevelsSurvey(); Render(); }, primary: !S.HasLevels);
+            lv.HorizontalAlignment = HorizontalAlignment.Left; lv.Margin = new Thickness(0, 0, 0, 22);
+            body.Children.Add(lv);
+        }
         body.Children.Add(Card(row, 20));
         var next = S.Events.Where(e => e.IsDeadline && string.CompareOrdinal(e.Date, today) >= 0 && !S.IsDone(e)).OrderBy(e => e.SortKey).Take(4).ToList();
         if (next.Count > 0)

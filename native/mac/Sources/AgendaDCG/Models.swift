@@ -59,7 +59,7 @@ func sameSubject(_ a: String?, _ b: String?) -> Bool {
     return a == b || a.components(separatedBy: " · ").first == b.components(separatedBy: " · ").first
 }
 
-struct PdfFile: Codable, Hashable { var key: String; var name: String; var size: Int?; var uploadedBy: String?; var uploadedAt: String? }
+struct PdfFile: Codable, Hashable { var key: String; var name: String; var size: Int?; var uploadedBy: String?; var uploadedAt: String?; var locked: Bool? }
 
 struct Chapter: Codable, Identifiable, Hashable {
     var id: String

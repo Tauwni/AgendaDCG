@@ -28,6 +28,19 @@
   [headers.values]
     Cache-Control = "no-cache"
 
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+[[headers]]
+  for = "/app.css"
+  [headers.values]
+    Cache-Control = "no-cache"
+[[headers]]
+  for = "/tts.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
 # L'emploi du temps est modifiable depuis /admin : servi par l'API (repli sur schedule-default.json)
 [[redirects]]
   from = "/schedule.json"

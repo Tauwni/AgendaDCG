@@ -2,7 +2,7 @@
 // seule son empreinte scrypt est rangée dans la variable Netlify ADMIN_HASH ("sel:empreinte").
 import { getStore } from "@netlify/blobs";
 import { createHmac, scryptSync, timingSafeEqual, randomBytes } from "node:crypto";
-import { events, profiles, listAll, KINDS } from "./shared.mjs";
+import { events, profiles, listAll, KINDS, trash } from "./shared.mjs";
 
 const COOKIE = "agenda_admin";
 const MAX_FAILS = 5;
@@ -164,6 +164,22 @@ export async function handleAdmin(req, url, id) {
   if (id === "schedule" && method === "DELETE") {
     await config().delete("schedule");
     return json(await readSchedule(url.origin));
+  }
+
+  // Corbeille : devoirs supprimés depuis moins de 7 jours
+  if (id === "trash" && method === "GET") {
+    const all = await listAll(trash());
+    return json(all.map((e) => ({ id: e.id, title: e.title, kind: KINDS[e.kind]?.label || e.kind, subject: e.subject, date: e.date, deletedBy: e.deletedBy, deletedAt: e.deletedAt })).sort((a, b) => (b.deletedAt || "").localeCompare(a.deletedAt || "")));
+  }
+  if (id === "restore" && method === "POST") {
+    const body = await req.json().catch(() => ({}));
+    const e = await trash().get(String(body.id || ""), { type: "json" });
+    if (!e) return json({ error: "Introuvable dans la corbeille" }, 404);
+    const { deletedBy, deletedAt, ...ev } = e;
+    ev.history = [...(ev.history || []), { by: "Admin", at: new Date().toISOString(), action: "a restauré depuis la corbeille" }].slice(-30);
+    await events().setJSON(ev.id, ev);
+    await trash().delete(ev.id);
+    return json({ ok: true });
   }
 
   // Réinitialiser le code perso d'un camarade qui l'a oublié (nouveau code donné par l'admin)

@@ -20,6 +20,10 @@ public static class Reader
     static bool playing;
     static double rate = 1;
     static string? title;
+    static string key = "";
+    static readonly string PosFile = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AgendaDCG", "lecture.json");
+    static Dictionary<string, int> LoadPos() { try { return System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, int>>(System.IO.File.ReadAllText(PosFile)) ?? new(); } catch { return new(); } }
+    static void Save() { if (key == "") return; try { var d = LoadPos(); d[key] = pos; System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(PosFile)!); System.IO.File.WriteAllText(PosFile, System.Text.Json.JsonSerializer.Serialize(d)); } catch { } }
     public static readonly Border Bar = new() { CornerRadius = new CornerRadius(22), Padding = new Thickness(14, 6, 8, 6), Background = new SolidColorBrush(Color.FromArgb(240, 30, 30, 32)), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 0, 70), Visibility = Visibility.Collapsed };
 
     static Reader()
@@ -30,7 +34,7 @@ public static class Reader
         Player.MediaEnded += (_, _) => Application.Current.Dispatcher.Invoke(() => { var my = token; if (!playing) return; pos++; _ = Speak(my); });
     }
 
-    public static void Read(string path, string name)
+    public static void Read(string path, string name, string fileKey = "")
     {
         string text;
         using (var doc = PdfDocument.Open(path))
@@ -40,7 +44,10 @@ public static class Reader
         text = Regex.Replace(text, @"([^.!?:;\n])\n(?=[a-zà-ÿ])", "$1 ");
         chunks = Split(text);
         if (string.Concat(chunks).Length < 80) throw new Exception("Ce PDF est une image (scan) : pas de texte à lire");
-        title = name; pos = 0; Play();
+        title = name; key = fileKey;
+        var saved = fileKey != "" && LoadPos().TryGetValue(fileKey, out var sp) ? sp : 0;
+        pos = saved > 0 && saved < chunks.Count - 1 ? saved : 0; // reprise là où on s'était arrêté
+        Play();
     }
 
     static List<string> Split(string text)
@@ -58,7 +65,8 @@ public static class Reader
 
     static async Task Speak(int my)
     {
-        if (pos >= chunks.Count) { Stop(); return; }
+        if (pos >= chunks.Count) { pos = 0; Stop(); return; }
+        Save();
         Synth.Options.SpeakingRate = rate;
         var stream = await Synth.SynthesizeTextToStreamAsync(chunks[pos]);
         if (my != token || !playing) return;
@@ -69,7 +77,7 @@ public static class Reader
 
     static void Play() { token++; playing = true; Player.Pause(); _ = Speak(token); Render(); }
     static void Pause() { token++; playing = false; Player.Pause(); Render(); }
-    static void Stop() { token++; playing = false; Player.Pause(); title = null; Bar.Visibility = Visibility.Collapsed; }
+    static void Stop() { Save(); token++; playing = false; Player.Pause(); title = null; Bar.Visibility = Visibility.Collapsed; }
     static void Jump(int d) { pos = Math.Clamp(pos + d, 0, Math.Max(0, chunks.Count - 1)); if (playing) Play(); else Render(); }
 
     static void Render()
@@ -83,7 +91,10 @@ public static class Reader
         row.Children.Add(Btn("⏩", () => Jump(3)));
         row.Children.Add(Btn($"×{rate}", () => { double[] s = { 0.8, 1, 1.25, 1.5, 1.75, 2 }; rate = s[(Array.IndexOf(s, rate) + 1) % s.Length]; if (playing) Play(); else Render(); }));
         row.Children.Add(Btn("✕", Stop));
-        Bar.Child = row;
+        var col = new StackPanel();
+        col.Children.Add(row);
+        col.Children.Add(new TextBlock { Text = pos < chunks.Count ? chunks[pos] : "", Foreground = Brushes.Gray, FontSize = 12, TextWrapping = TextWrapping.Wrap, MaxWidth = 520, MaxHeight = 34, Margin = new Thickness(0, 4, 0, 2) });
+        Bar.Child = col;
         Bar.Visibility = Visibility.Visible;
     }
 }

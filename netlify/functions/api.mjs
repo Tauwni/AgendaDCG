@@ -1,7 +1,7 @@
 import { getStore } from "@netlify/blobs";
 import { createHmac, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import { handleAdmin, readSchedule } from "../lib/admin.mjs";
-import { bump } from "../lib/shared.mjs";
+import { bump, trash, purgeTrash } from "../lib/shared.mjs";
 import { KINDS, events, profiles, listAll, profileId, pushReady, sendPush, frDate, describe } from "../lib/shared.mjs";
 
 const COOKIE = "agenda_session";
@@ -107,31 +107,6 @@ function readChapterFields(body) {
   return { ch };
 }
 
-function readGrades(list) {
-  if (!Array.isArray(list) || list.length > 1000) return { error: "Liste de notes invalide" };
-  const out = [];
-  for (const g of list) {
-    const outOf = Number(g.outOf);
-    const value = Number(g.value);
-    const coef = Number(g.coef);
-    const grade = {
-      id: UUID.test(String(g.id)) ? String(g.id) : randomUUID(),
-      subject: cleanText(g.subject, 60),
-      title: cleanText(g.title, 120),
-      date: String(g.date || ""),
-      category: CATEGORIES.includes(g.category) ? g.category : "controle",
-      value, outOf, coef,
-    };
-    if (!grade.subject) return { error: "Chaque note doit avoir une matière" };
-    if (!isDate(grade.date)) return { error: "Date de note invalide" };
-    if (!(outOf > 0 && outOf <= 100)) return { error: "Barème invalide" };
-    if (!(value >= 0 && value <= outOf)) return { error: `Note invalide (entre 0 et ${outOf})` };
-    if (!(coef > 0 && coef <= 20)) return { error: "Coefficient invalide (entre 0,1 et 20)" };
-    out.push(grade);
-  }
-  return { grades: out };
-}
-
 function readPrefs(p) {
   return {
     onNew: !!p?.onNew,
@@ -142,7 +117,7 @@ function readPrefs(p) {
 }
 
 const publicProfile = (p) => ({
-  id: p.id, name: p.name, done: p.done || [], grades: p.grades || [], prefs: p.prefs || readPrefs({}), levels: p.levels || null,
+  id: p.id, name: p.name, done: p.done || [], grades: p.grades || [], prefs: p.prefs || readPrefs({}), levels: p.levels || null, admin: !!p.admin,
   pushDevices: (p.subs || []).length,
 });
 
@@ -261,10 +236,6 @@ async function handleProfile(req, url, id, method) {
     if (body.done) done.add(eid); else done.delete(eid);
     if (body.done) await bump({ done: 1 });
     profile.done = [...done].slice(-3000);
-  } else if (id === "grades" && method === "PUT") {
-    const { grades, error } = readGrades(body.grades);
-    if (error) return json({ error }, 400);
-    profile.grades = grades;
   } else if (id === "levels" && method === "PUT") {
     const out = {};
     for (const [k, v] of Object.entries(body.levels || {}).slice(0, 30)) { const n = Math.round(Number(v)); if (n >= 1 && n <= 10) out[String(k).slice(0, 60)] = n; }
@@ -360,6 +331,12 @@ export default async (req) => {
 
   if (resource === "me") return json({ ok: true });
 
+  // L'auteur d'une action est toujours le compte connecté (jamais un nom envoyé par l'app)
+  const mePid = currentProfileId(req);
+  const meProfile = mePid ? await profiles().get(mePid, { type: "json" }) : null;
+  const me = meProfile?.name || "";
+  const isAdminUser = !!meProfile?.admin;
+
   if (resource === "profile") return handleProfile(req, url, id, method);
 
   if (resource === "usage" && method === "GET") {
@@ -379,8 +356,8 @@ export default async (req) => {
 
     if (method === "POST" && !id) {
       const body = await req.json().catch(() => ({}));
-      const by = cleanName(body.by);
-      if (!by) return json({ error: "Ton nom est obligatoire" }, 400);
+      const by = me;
+      if (!by) return json({ error: "Connecte-toi à ton compte" }, 400);
       const { ev, error } = await readEventFields(body);
       if (error) return json({ error }, 400);
       const now = new Date().toISOString();
@@ -402,8 +379,8 @@ export default async (req) => {
 
     if (method === "PUT") {
       const body = await req.json().catch(() => ({}));
-      const by = cleanName(body.by);
-      if (!by) return json({ error: "Ton nom est obligatoire" }, 400);
+      const by = me;
+      if (!by) return json({ error: "Connecte-toi à ton compte" }, 400);
       const { ev, error } = await readEventFields(body);
       if (error) return json({ error }, 400);
       const updated = stamp({ ...existing, ...ev }, by, `a modifié ${KINDS[ev.kind].article}`);
@@ -412,11 +389,42 @@ export default async (req) => {
     }
 
     if (method === "DELETE") {
-      if (!cleanName(url.searchParams.get("by"))) return json({ error: "Ton nom est obligatoire" }, 400);
-      await Promise.all((existing.attachments || []).map((f) => deleteR2(f.key).catch(() => {})));
+      if (!me) return json({ error: "Connecte-toi à ton compte" }, 400);
+      // Corbeille : restaurable 7 jours depuis /admin, puis effacé pour de bon (avec ses pièces jointes)
+      await trash().setJSON(id, { ...existing, deletedBy: me, deletedAt: new Date().toISOString() });
       await events().delete(id);
+      await purgeTrash(deleteR2).catch(() => {});
       await bump({ deleted: 1 });
       return json({ ok: true });
+    }
+  }
+
+  if (resource === "search") {
+    const texts = getStore({ name: "pdftext", consistency: "strong" });
+    const all = await listAll(chapters());
+    if (method === "POST" && id === "index") {
+      const body = await req.json().catch(() => ({}));
+      const key = String(body.key || "");
+      if (!UUID.test(key) || !all.some((c) => Object.values(c.files || {}).some((f) => f?.key === key))) return json({ error: "PDF introuvable" }, 404);
+      if (!(await texts.get(key))) await texts.set(key, String(body.text || "").replace(/\s+/g, " ").slice(0, 400000) || " ");
+      return json({ ok: true });
+    }
+    if (method === "GET") {
+      const norm = (t) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const q = norm(String(url.searchParams.get("q") || "").trim()).slice(0, 80);
+      const subject = url.searchParams.get("subject") || "";
+      if (q.length < 2) return json({ results: [], missing: [] });
+      const results = [], missing = [];
+      await Promise.all(all.filter((c) => !subject || c.subject === subject).flatMap((c) => Object.entries(c.files || {}).filter(([, f]) => f).map(async ([slot, f]) => {
+        const text = await texts.get(f.key);
+        if (text == null) { missing.push(f.key); return; }
+        const n = norm(text); // même longueur que le texte d'origine à quelques accents près : extraits pris sur n
+        const hits = []; let i = -1, count = 0;
+        while ((i = n.indexOf(q, i + 1)) !== -1) { count++; if (hits.length < 3) hits.push({ before: text.slice(Math.max(0, i - 60), i), match: text.slice(i, i + q.length), after: text.slice(i + q.length, i + q.length + 80) }); }
+        if (count) results.push({ chapter: c.id, title: c.title, subject: c.subject, slot, key: f.key, count, hits });
+      })));
+      results.sort((a, b) => b.count - a.count);
+      return json({ results: results.slice(0, 60), missing: missing.slice(0, 80) });
     }
   }
 
@@ -425,8 +433,8 @@ export default async (req) => {
 
     if (method === "POST" && !id) {
       const body = await req.json().catch(() => ({}));
-      const by = cleanName(body.by);
-      if (!by) return json({ error: "Ton nom est obligatoire" }, 400);
+      const by = me;
+      if (!by) return json({ error: "Connecte-toi à ton compte" }, 400);
       const { ch, error } = readChapterFields(body);
       if (error) return json({ error }, 400);
       const now = new Date().toISOString();
@@ -445,8 +453,8 @@ export default async (req) => {
 
     if (method === "PUT") {
       const body = await req.json().catch(() => ({}));
-      const by = cleanName(body.by);
-      if (!by) return json({ error: "Ton nom est obligatoire" }, 400);
+      const by = me;
+      if (!by) return json({ error: "Connecte-toi à ton compte" }, 400);
       const { ch, error } = readChapterFields(body);
       if (error) return json({ error }, 400);
       const updated = stamp({ ...existing, ...ch }, by, "a renommé le chapitre");
@@ -455,8 +463,8 @@ export default async (req) => {
     }
 
     if (method === "DELETE") {
-      const by = cleanName(url.searchParams.get("by"));
-      if (!by) return json({ error: "Ton nom est obligatoire" }, 400);
+      const by = me;
+      if (!by) return json({ error: "Connecte-toi à ton compte" }, 400);
       if (Object.values(existing.files).some((f) => f?.locked)) return json({ error: "Ce chapitre contient des PDF officiels : il ne peut pas être supprimé" }, 403);
       await Promise.all(Object.values(existing.files).filter(Boolean).map((f) => deleteR2(f.key)));
       for (const ev of await listAll(events())) {
@@ -482,8 +490,8 @@ export default async (req) => {
     if (method === "POST" && (id === "start" || id === "finish")) {
       if (!r2Enabled()) return json({ error: "Stockage R2 non configuré" }, 501);
       const body = await req.json().catch(() => ({}));
-      const by = cleanName(body.by);
-      if (!by) return json({ error: "Ton nom est obligatoire" }, 400);
+      const by = me;
+      if (!by) return json({ error: "Connecte-toi à ton compte" }, 400);
       if (body.event) return eventAttachment(id, body, by);
       if (!(body.slot in SLOTS)) return json({ error: "Type de PDF inconnu" }, 400);
       const ch = await chapters().get(String(body.chapter || ""), { type: "json" });
@@ -507,7 +515,7 @@ export default async (req) => {
       if (!name.toLowerCase().endsWith(".pdf")) name += ".pdf";
       await pdfs().setJSON(`r2:${key}`, { name, chapterId: ch.id, slot: body.slot });
       const previous = ch.files[body.slot];
-      const file = { key, name, size: Number(head.headers.get("content-length")) || 0, uploadedBy: by, uploadedAt: new Date().toISOString(), ...(currentProfileId(req) === "tony" ? { locked: true } : {}) };
+      const file = { key, name, size: Number(head.headers.get("content-length")) || 0, uploadedBy: by, uploadedAt: new Date().toISOString(), ...(isAdminUser ? { locked: true } : {}) };
       const updated = stamp({ ...ch, files: { ...ch.files, [body.slot]: file } }, by, `a ${previous ? "remplacé" : "ajouté"} ${SLOTS[body.slot]}`);
       await bump({ pdfs: 1, bytes: file.size });
       await chapters().setJSON(ch.id, updated);
@@ -516,8 +524,8 @@ export default async (req) => {
     }
 
     if (method === "DELETE" && id && url.searchParams.get("event")) {
-      const by = cleanName(url.searchParams.get("by"));
-      if (!by) return json({ error: "Ton nom est obligatoire" }, 400);
+      const by = me;
+      if (!by) return json({ error: "Connecte-toi à ton compte" }, 400);
       const ev = await events().get(url.searchParams.get("event"), { type: "json" });
       if (!ev || !(ev.attachments || []).some((f) => f.key === id)) return json({ error: "Fichier introuvable" }, 404);
       await deleteR2(id);
@@ -527,9 +535,9 @@ export default async (req) => {
     }
 
     if (method === "DELETE" && id) {
-      const by = cleanName(url.searchParams.get("by"));
+      const by = me;
       const slot = url.searchParams.get("slot") || "";
-      if (!by) return json({ error: "Ton nom est obligatoire" }, 400);
+      if (!by) return json({ error: "Connecte-toi à ton compte" }, 400);
       if (!(slot in SLOTS)) return json({ error: "Type de PDF inconnu" }, 400);
       const ch = await chapters().get(url.searchParams.get("chapter") || "", { type: "json" });
       if (!ch || ch.files[slot]?.key !== id) return json({ error: "PDF introuvable" }, 404);

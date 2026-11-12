@@ -87,7 +87,7 @@ public static class Dialogs
                     foreach (var p in picks)
                     {
                         body.Children.Add(Row(p));
-                        if (p.Chapter?.Files.GetValueOrDefault("cours") is { } f) { var chTitle = p.Chapter.Title; var fb = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) }; fb.Children.Add(Btn("Fiche de cours", () => Open(f))); fb.Children.Add(Btn("🎧 Écouter", async () => await Try(async () => { var path = await S.Download(f); Reader.Read(path, chTitle); }))); body.Children.Add(fb); }
+                        if (p.Chapter?.Files.GetValueOrDefault("cours") is { } f) { var chTitle = p.Chapter.Title; var fb = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) }; fb.Children.Add(Btn("Fiche de cours", () => Open(f))); fb.Children.Add(Btn("🎧 Écouter", async () => await Try(async () => { var path = await S.Download(f); Reader.Read(path, chTitle, f.Key); }))); body.Children.Add(fb); }
                     }
                 }
                 else
@@ -302,8 +302,9 @@ public static class Dialogs
                     var path = await S.Download(f);
                     Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
                 })));
-                buttons.Children.Add(Btn("🎧", async () => await Try(async () => { Toast("Préparation de la lecture…"); var path = await S.Download(f); Reader.Read(path, $"{label} · {chapter.Title}"); })));
-                if (editable)
+                buttons.Children.Add(Btn("🎧", async () => await Try(async () => { Toast("Préparation de la lecture…"); var path = await S.Download(f); Reader.Read(path, $"{label} · {chapter.Title}", f.Key); })));
+                if (f.Locked) buttons.Children.Add(new TextBlock { Text = "🔒", ToolTip = "PDF officiel : ni supprimable ni remplaçable", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 4, 0) });
+                else if (editable)
                 {
                     buttons.Children.Add(IconBtn("", () => Pick(chapter, slot), "Remplacer"));
                     buttons.Children.Add(IconBtn("", async () => { if (Confirm($"Supprimer {label.ToLower()} ?")) await Try(() => S.DeleteFile(f, chapter, slot)); }, "Supprimer"));
@@ -352,90 +353,6 @@ public static class Dialogs
         save.IsDefault = true; save.HorizontalAlignment = HorizontalAlignment.Right;
         w = Dialog(chapter == null ? "Nouveau chapitre" : "Renommer", V(8, T(chapter == null ? "Nouveau chapitre" : "Renommer le chapitre", 22, FontWeights.Bold), Field("Matière", sub), Field("Nom", title), save), 520);
         title.Focus();
-        w.ShowDialog();
-    }
-
-    public static void GradeEditor(Grade? existing, string? subject)
-    {
-        var isNew = existing == null;
-        var g = existing ?? new Grade { Subject = subject ?? "", Date = Data.Iso(DateTime.Today) };
-        Window? w = null;
-        var sub = Combo(new[] { ("", "Choisir…") }.Concat(Data.Subjects.Select(s => (s, s))), g.Subject);
-        var title = Input(g.Title);
-        var cat = Combo(Data.Categories, g.Category);
-        var day = new DatePicker { SelectedDate = Data.Parse(g.Date), FontSize = 14 };
-        var value = Input(isNew ? "" : Data.Num(g.Value, 2));
-        var outOf = Input(Data.Num(g.OutOf));
-        var coef = Input(Data.Num(g.Coef));
-        var err = T("", 13, null, Theme.Accent);
-        var actions = new DockPanel { Margin = new Thickness(0, 14, 0, 0) };
-        var save = Btn(isNew ? "Ajouter" : "Enregistrer", async () =>
-        {
-            var grade = new Grade
-            {
-                Id = isNew ? Guid.NewGuid().ToString() : g.Id, Subject = sub.Value(), Title = title.Text.Trim(), Category = cat.Value(),
-                Date = Data.Iso(day.SelectedDate ?? DateTime.Today), Value = Number(value.Text) ?? -1, OutOf = Number(outOf.Text) ?? 20, Coef = Number(coef.Text) ?? 1,
-            };
-            if (grade.Subject == "") { err.Text = "Choisis une matière"; return; }
-            var all = (S.Profile?.Grades ?? new()).Where(x => x.Id != grade.Id).Append(grade).ToList();
-            if (await Try(() => S.SaveGrades(all))) w!.Close();
-        }, primary: true);
-        save.IsDefault = true;
-        DockPanel.SetDock(save, Dock.Right); actions.Children.Add(save);
-        if (!isNew)
-        {
-            var del = Btn("Supprimer", async () => { if (Confirm("Supprimer cette note ?") && await Try(() => S.SaveGrades((S.Profile?.Grades ?? new()).Where(x => x.Id != g.Id).ToList()))) w!.Close(); }, danger: true);
-            del.HorizontalAlignment = HorizontalAlignment.Left; actions.Children.Add(del);
-        }
-        w = Dialog(isNew ? "Nouvelle note" : "Modifier la note", V(4, T(isNew ? "Nouvelle note" : "Modifier la note", 22, FontWeights.Bold),
-            Field("Matière", sub), Field("Intitulé", title), Field("Type", cat), Field("Date", day), Field("Note", value), Field("Sur", outOf), Field("Coefficient", coef),
-            T("Les entraînements ne comptent pas dans la moyenne.", 12, null, Theme.Text2), err, actions), 480);
-        value.Focus();
-        w.ShowDialog();
-    }
-
-    public static void SubjectDetail(string subject)
-    {
-        Window? w = null;
-        var body = new StackPanel();
-        void Draw()
-        {
-            body.Children.Clear();
-            var gs = (S.Profile?.Grades ?? new()).Where(g => g.Subject == subject).OrderBy(g => g.Date).ToList();
-            var counted = gs.Where(g => g.Category != "entrainement").ToList();
-            double Sum = counted.Sum(g => g.On20 * g.Coef), C = counted.Sum(g => g.Coef);
-            body.Children.Add(T(subject, 22, FontWeights.Bold));
-            body.Children.Add(T("Moyenne : " + (Data.Average(gs) is { } a ? Data.Num(a, 2) : "–"), 16));
-            var chart = MainWindow.Chart(gs, 500, 160); chart.Margin = new Thickness(0, 12, 0, 12);
-            body.Children.Add(chart);
-            var target = Input("12"); var coef = Input("1");
-            var result = T("", 14, FontWeights.SemiBold);
-            void Sim()
-            {
-                if (Number(target.Text) is not double t || Number(coef.Text) is not double c || c <= 0 || t < 0 || t > 20) { result.Text = "Entre une moyenne entre 0 et 20 et un coefficient positif."; return; }
-                var need = (t * (C + c) - Sum) / c;
-                result.Text = need > 20 ? $"Même avec 20/20, ta moyenne monterait à {Data.Num((Sum + 20 * c) / (C + c), 2)}."
-                    : need <= 0 ? $"C'est déjà gagné : même avec 0/20 tu restes à {Data.Num(Sum / (C + c), 2)} ou plus."
-                    : $"Il te faut au moins {Data.Num(need, 2)}/20 au prochain contrôle.";
-            }
-            target.TextChanged += (_, _) => Sim(); coef.TextChanged += (_, _) => Sim(); Sim();
-            body.Children.Add(Card(V(4, T("Simulateur", 14, FontWeights.Bold), Field("Moyenne visée", target), Field("Coefficient", coef), result)));
-            foreach (var g in Enumerable.Reverse(gs))
-            {
-                var row = new DockPanel();
-                var v = T($"{Data.Num(g.Value, 2)}/{Data.Num(g.OutOf)}", 15, FontWeights.Bold); DockPanel.SetDock(v, Dock.Right); row.Children.Add(v);
-                var catLabel = Data.Categories.First(c => c.Id == g.Category).Label;
-                row.Children.Add(V(1, T(g.Title == "" ? catLabel : g.Title, 14, FontWeights.SemiBold), T($"{catLabel} · {Data.LongDate(g.Date)}{(g.Coef != 1 ? $" · coef {Data.Num(g.Coef)}" : "")}", 12, null, Theme.Text2)));
-                var item = Clickable(row, () => { GradeEditor(g, subject); Draw(); });
-                item.Margin = new Thickness(0, 10, 0, 0);
-                body.Children.Add(item);
-            }
-            var add = Btn("+ Ajouter une note", () => { GradeEditor(null, subject); Draw(); }, primary: true);
-            add.HorizontalAlignment = HorizontalAlignment.Right; add.Margin = new Thickness(0, 16, 0, 0);
-            body.Children.Add(add);
-        }
-        Draw();
-        w = Dialog(subject, body, 580);
         w.ShowDialog();
     }
 }

@@ -123,7 +123,11 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   <div class="card" style="margin-top:12px"><div class="ctitle"><b>Événements ajoutés par semaine</b></div><div class="bars" id="weeks"></div></div>
 
   <h2>Utilisateurs</h2>
-  <div class="card scroll"><table><thead><tr><th>Prénom</th><th>Dernière visite</th><th>Appareils</th><th>Ajouts</th><th>Notes</th><th>Rappels</th><th></th></tr></thead><tbody id="people"></tbody></table></div>
+  <div class="card scroll"><table><thead><tr><th>Prénom</th><th>Dernière visite</th><th>Appareils</th><th>Ajouts</th><th>Rappels</th><th></th></tr></thead><tbody id="people"></tbody></table></div>
+
+  <h2>Corbeille</h2>
+  <div class="card scroll"><table><thead><tr><th>Supprimé</th><th>Date prévue</th><th>Par</th><th>Quand</th><th></th></tr></thead><tbody id="trash"></tbody></table></div>
+  <p class="note">Les devoirs supprimés restent ici 7 jours, puis sont effacés pour de bon.</p>
 
   <h2>Emploi du temps</h2>
   <div class="card">
@@ -184,13 +188,19 @@ async function start() {
     const fresh = p.lastSeenAt && Date.now() - Date.parse(p.lastSeenAt) < 7 * 864e5;
     return `<tr><td><span class="dot" style="background:${fresh ? "var(--green)" : "var(--line)"}"></span><b>${esc(p.name)}</b>${p.locked ? ' <span class="tag" style="color:var(--accent)">bloqué</span>' : ""}</td>
       <td>${ago(p.lastSeenAt)}</td><td>${Object.keys(p.platforms).map((k) => `<span class="tag">${esc(k)}</span>`).join("") || "—"}</td>
-      <td>${p.events}</td><td>${p.grades}</td><td>${p.push ? "oui" : "—"}</td>
+      <td>${p.events}</td><td>${p.push ? "oui" : "—"}</td>
       <td><button class="link" data-reset="${esc(p.id)}" data-name="${esc(p.name)}">Nouveau code</button></td></tr>`;
-  }).join("") || `<tr><td colspan="7" class="note">Aucun compte</td></tr>`;
+  }).join("") || `<tr><td colspan="6" class="note">Aucun compte</td></tr>`;
   document.querySelectorAll("[data-reset]").forEach((b) => b.onclick = async () => {
     const pin = prompt(`Nouveau code perso à 6 chiffres pour ${b.dataset.name} :`);
     if (!pin) return;
     try { await api("reset-pin", { method: "POST", body: JSON.stringify({ id: b.dataset.reset, pin }) }); toast(`Code de ${b.dataset.name} changé`); start(); }
+    catch (err) { toast(err.message); }
+  });
+  const bin = await api("trash").catch(() => []);
+  $("#trash").innerHTML = bin.map((e) => `<tr><td><b>${esc(e.title)}</b> <span class="tag">${esc(e.kind)}</span></td><td>${esc(e.date)}</td><td>${esc(e.deletedBy || "—")}</td><td>${ago(e.deletedAt)}</td><td><button class="link" data-restore="${esc(e.id)}">Restaurer</button></td></tr>`).join("") || `<tr><td colspan="5" class="note">La corbeille est vide</td></tr>`;
+  document.querySelectorAll("[data-restore]").forEach((b) => b.onclick = async () => {
+    try { await api("restore", { method: "POST", body: JSON.stringify({ id: b.dataset.restore }) }); toast("Restauré dans l'agenda"); start(); }
     catch (err) { toast(err.message); }
   });
   schedule = await api("schedule");

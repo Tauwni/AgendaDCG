@@ -348,10 +348,6 @@ final class AppModel: ObservableObject {
     }
 
     // MARK: Profil
-    func saveGrades(_ grades: [Grade]) async -> Bool {
-        await run { profile = try await API.call("profile/grades", method: "PUT", body: ["grades": API.encode(grades)]) }
-    }
-
     func savePrefs(_ prefs: Prefs) async {
         _ = await run {
             profile = try await API.call("profile/prefs", method: "PUT", body: ["prefs": API.encode(prefs)])
