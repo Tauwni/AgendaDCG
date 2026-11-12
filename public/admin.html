@@ -126,8 +126,8 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   <div class="card scroll"><table><thead><tr><th>Prénom</th><th>Dernière visite</th><th>Appareils</th><th>Ajouts</th><th>Rappels</th><th></th></tr></thead><tbody id="people"></tbody></table></div>
 
   <h2>Corbeille</h2>
-  <div class="card scroll"><table><thead><tr><th>Supprimé</th><th>Date prévue</th><th>Par</th><th>Quand</th><th></th></tr></thead><tbody id="trash"></tbody></table></div>
-  <p class="note">Les devoirs supprimés restent ici 7 jours, puis sont effacés pour de bon.</p>
+  <div class="card scroll"><table><thead><tr><th>Supprimé</th><th>Détail</th><th>Par</th><th>Quand</th><th></th></tr></thead><tbody id="trash"></tbody></table></div>
+  <p class="note">Les devoirs, chapitres et PDF supprimés ou remplacés restent ici 7 jours, puis sont effacés pour de bon.</p>
 
   <h2>Emploi du temps</h2>
   <div class="card">
@@ -200,7 +200,7 @@ async function start() {
   const bin = await api("trash").catch(() => []);
   $("#trash").innerHTML = bin.map((e) => `<tr><td><b>${esc(e.title)}</b> <span class="tag">${esc(e.kind)}</span></td><td>${esc(e.date)}</td><td>${esc(e.deletedBy || "—")}</td><td>${ago(e.deletedAt)}</td><td><button class="link" data-restore="${esc(e.id)}">Restaurer</button></td></tr>`).join("") || `<tr><td colspan="5" class="note">La corbeille est vide</td></tr>`;
   document.querySelectorAll("[data-restore]").forEach((b) => b.onclick = async () => {
-    try { await api("restore", { method: "POST", body: JSON.stringify({ id: b.dataset.restore }) }); toast("Restauré dans l'agenda"); start(); }
+    try { await api("restore", { method: "POST", body: JSON.stringify({ id: b.dataset.restore }) }); toast("Restauré"); start(); }
     catch (err) { toast(err.message); }
   });
   schedule = await api("schedule");

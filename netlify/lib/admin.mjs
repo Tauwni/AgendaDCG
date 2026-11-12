@@ -168,17 +168,42 @@ export async function handleAdmin(req, url, id) {
 
   // Corbeille : devoirs supprimés depuis moins de 7 jours
   if (id === "trash" && method === "GET") {
+    const SLOT = { cours: "Fiche de cours", sujet: "Sujet", corrige: "Corrigé", topexo: "TOP EXO" };
     const all = await listAll(trash());
-    return json(all.map((e) => ({ id: e.id, title: e.title, kind: KINDS[e.kind]?.label || e.kind, subject: e.subject, date: e.date, deletedBy: e.deletedBy, deletedAt: e.deletedAt })).sort((a, b) => (b.deletedAt || "").localeCompare(a.deletedAt || "")));
+    return json(all.map((e) => e.trashType === "file"
+      ? { id: e.id, title: `${SLOT[e.slot] || e.slot} · ${e.chapterTitle}`, kind: "PDF", date: e.file?.name || "", deletedBy: e.deletedBy, deletedAt: e.deletedAt }
+      : e.trashType === "chapter"
+        ? { id: e.id, title: e.title, kind: "Chapitre", date: `${e.subject} · ${Object.values(e.files || {}).filter(Boolean).length} PDF`, deletedBy: e.deletedBy, deletedAt: e.deletedAt }
+        : { id: e.id, title: e.title, kind: KINDS[e.kind]?.label || e.kind, date: e.date, deletedBy: e.deletedBy, deletedAt: e.deletedAt }
+    ).sort((a, b) => (b.deletedAt || "").localeCompare(a.deletedAt || "")));
   }
   if (id === "restore" && method === "POST") {
     const body = await req.json().catch(() => ({}));
     const e = await trash().get(String(body.id || ""), { type: "json" });
     if (!e) return json({ error: "Introuvable dans la corbeille" }, 404);
-    const { deletedBy, deletedAt, ...ev } = e;
-    ev.history = [...(ev.history || []), { by: "Admin", at: new Date().toISOString(), action: "a restauré depuis la corbeille" }].slice(-30);
-    await events().setJSON(ev.id, ev);
-    await trash().delete(ev.id);
+    const chapterStore = getStore({ name: "chapters", consistency: "strong" });
+    const note = { by: "Admin", at: new Date().toISOString() };
+    if (e.trashType === "file") {
+      const ch = await chapterStore.get(e.chapterId, { type: "json" });
+      if (!ch) return json({ error: "Le chapitre de ce PDF n'existe plus : restaure d'abord le chapitre" }, 409);
+      if (ch.files?.[e.slot]) return json({ error: "Un autre PDF occupe déjà cet emplacement : supprime-le d'abord" }, 409);
+      ch.files = { ...ch.files, [e.slot]: e.file };
+      ch.history = [...(ch.history || []), { ...note, action: "a restauré un PDF depuis la corbeille" }].slice(-30);
+      await chapterStore.setJSON(ch.id, ch);
+    } else if (e.trashType === "chapter") {
+      const { trashType, linkedEvents, deletedBy, deletedAt, ...ch } = e;
+      ch.history = [...(ch.history || []), { ...note, action: "a restauré le chapitre depuis la corbeille" }].slice(-30);
+      await chapterStore.setJSON(ch.id, ch);
+      for (const eid of linkedEvents || []) { // remet le chapitre sur les devoirs qui le citaient
+        const ev = await events().get(eid, { type: "json" });
+        if (ev && !(ev.chapters || []).includes(ch.id)) await events().setJSON(eid, { ...ev, chapters: [...(ev.chapters || []), ch.id] });
+      }
+    } else {
+      const { deletedBy, deletedAt, ...ev } = e;
+      ev.history = [...(ev.history || []), { ...note, action: "a restauré depuis la corbeille" }].slice(-30);
+      await events().setJSON(ev.id, ev);
+    }
+    await trash().delete(e.id);
     return json({ ok: true });
   }
 

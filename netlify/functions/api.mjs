@@ -466,13 +466,17 @@ export default async (req) => {
       const by = me;
       if (!by) return json({ error: "Connecte-toi à ton compte" }, 400);
       if (Object.values(existing.files).some((f) => f?.locked)) return json({ error: "Ce chapitre contient des PDF officiels : il ne peut pas être supprimé" }, 403);
-      await Promise.all(Object.values(existing.files).filter(Boolean).map((f) => deleteR2(f.key)));
+      const linked = [];
       for (const ev of await listAll(events())) {
         if (!ev.chapters?.includes(id)) continue;
+        linked.push(ev.id);
         const updated = stamp({ ...ev, chapters: ev.chapters.filter((c) => c !== id) }, by, `a supprimé le chapitre « ${existing.title} » de la bibliothèque`);
         await events().setJSON(ev.id, updated);
       }
+      // Corbeille : le chapitre et ses PDF restent restaurables 7 jours depuis /admin
+      await trash().setJSON(id, { ...existing, trashType: "chapter", linkedEvents: linked, deletedBy: me, deletedAt: new Date().toISOString() });
       await chapters().delete(id);
+      await purgeTrash(deleteR2).catch(() => {});
       return json({ ok: true });
     }
   }
@@ -519,7 +523,7 @@ export default async (req) => {
       const updated = stamp({ ...ch, files: { ...ch.files, [body.slot]: file } }, by, `a ${previous ? "remplacé" : "ajouté"} ${SLOTS[body.slot]}`);
       await bump({ pdfs: 1, bytes: file.size });
       await chapters().setJSON(ch.id, updated);
-      if (previous) await deleteR2(previous.key);
+      if (previous) await trash().setJSON(previous.key, { id: previous.key, trashType: "file", chapterId: ch.id, chapterTitle: ch.title, subject: ch.subject, slot: body.slot, file: previous, deletedBy: by, deletedAt: new Date().toISOString() });
       return json(updated, 201);
     }
 
@@ -542,7 +546,8 @@ export default async (req) => {
       const ch = await chapters().get(url.searchParams.get("chapter") || "", { type: "json" });
       if (!ch || ch.files[slot]?.key !== id) return json({ error: "PDF introuvable" }, 404);
       if (ch.files[slot].locked) return json({ error: "Ce PDF officiel ne peut pas être supprimé" }, 403);
-      await deleteR2(id);
+      await trash().setJSON(id, { id, trashType: "file", chapterId: ch.id, chapterTitle: ch.title, subject: ch.subject, slot, file: ch.files[slot], deletedBy: by, deletedAt: new Date().toISOString() });
+      await purgeTrash(deleteR2).catch(() => {});
       const updated = stamp({ ...ch, files: { ...ch.files, [slot]: null } }, by, `a supprimé ${SLOTS[slot]}`);
       await chapters().setJSON(ch.id, updated);
       return json(updated);

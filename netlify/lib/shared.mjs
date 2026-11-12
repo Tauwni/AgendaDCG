@@ -18,7 +18,8 @@ export const trash = () => getStore({ name: "trash", consistency: "strong" });
 export async function purgeTrash(deleteFile) {
   for (const e of await listAll(trash())) {
     if (Date.now() - Date.parse(e.deletedAt || 0) < 7 * 864e5) continue;
-    await Promise.all((e.attachments || []).map((f) => deleteFile(f.key).catch(() => {})));
+    const files = e.trashType === "file" ? [e.file] : e.trashType === "chapter" ? Object.values(e.files || {}).filter(Boolean) : (e.attachments || []);
+    await Promise.all(files.map((f) => deleteFile(f.key).catch(() => {})));
     await trash().delete(e.id);
   }
 }
