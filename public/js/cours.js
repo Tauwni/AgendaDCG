@@ -7,7 +7,7 @@ function renderCours() {
   page.innerHTML = `
     <div class="page-head">
       <div><h1 class="page-title">Cours</h1><div class="page-sub">Fiches, sujets types et corrigés, rangés par matière</div></div>
-      <button class="icon-btn" data-act="newChapter" aria-label="Nouveau chapitre">${ICON.plus}</button>
+      <span style="display:flex;gap:8px;align-items:center">${state.profile?.admin ? `<button class="link" data-act="importFolder">Importer un dossier</button>` : ""}<button class="icon-btn" data-act="newChapter" aria-label="Nouveau chapitre">${ICON.plus}</button></span>
     </div>
     <input class="search" type="search" placeholder="Rechercher un chapitre, ou un mot dans les cours" value="${esc(coursQuery)}">
     <div class="section" id="coursResults"></div>
@@ -36,6 +36,7 @@ function renderCours() {
   text();
   page.querySelector(".search").addEventListener("input", (ev) => { coursQuery = ev.target.value; draw(); text(); });
   page.querySelector(".page-head [data-act=newChapter]").onclick = () => openChapterEdit(null, {});
+  const imp = page.querySelector("[data-act=importFolder]"); if (imp) imp.onclick = pickImportFolder;
 }
 
 /* Recherche d'un mot dans le texte des PDF. Le texte de chaque PDF est extrait une seule fois

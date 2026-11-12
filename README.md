@@ -358,6 +358,7 @@ AgendaDCG/
 | `js/agenda.js` | Agenda : mois, semaine, cahier de texte |
 | `js/events.js` | Devoirs et évaluations : création, modification, fiche, pièces jointes |
 | `js/cours.js` | Bibliothèque de cours, PDF, recherche dans le texte |
+| `js/import.js` | Import d'un dossier entier de cours (compte administrateur) |
 | `js/settings.js` | Notifications, mise à jour, Réglages, démarrage |
 | `tts.js` | Lecture à voix haute des PDF |
 | `pdf-tools.js` | Compression et conversion des PDF avant envoi |

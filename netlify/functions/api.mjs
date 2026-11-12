@@ -519,7 +519,7 @@ export default async (req) => {
       if (!name.toLowerCase().endsWith(".pdf")) name += ".pdf";
       await pdfs().setJSON(`r2:${key}`, { name, chapterId: ch.id, slot: body.slot });
       const previous = ch.files[body.slot];
-      const file = { key, name, size: Number(head.headers.get("content-length")) || 0, uploadedBy: by, uploadedAt: new Date().toISOString(), ...(isAdminUser ? { locked: true } : {}) };
+      const file = { key, name, size: Number(head.headers.get("content-length")) || 0, uploadedBy: by, uploadedAt: new Date().toISOString(), ...(isAdminUser ? { locked: true } : {}), ...(/^[0-9a-f]{64}$/.test(String(body.hash || "")) ? { hash: body.hash } : {}) };
       const updated = stamp({ ...ch, files: { ...ch.files, [body.slot]: file } }, by, `a ${previous ? "remplacé" : "ajouté"} ${SLOTS[body.slot]}`);
       await bump({ pdfs: 1, bytes: file.size });
       await chapters().setJSON(ch.id, updated);

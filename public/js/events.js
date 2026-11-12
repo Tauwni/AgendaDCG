@@ -57,12 +57,12 @@ async function attachFiles(eventId, picked, status = () => {}) {
 }
 const attachmentRows = (e) => (e.attachments || []).map((f) => `<a class="nav-row" href="/api/files/${f.key}" target="_blank" rel="noopener"><span class="folder">${ICON.folder}</span><span class="nav-body"><b>${esc(f.name)}</b><small>${size(f.size || 0)} · ajouté par ${esc(f.uploadedBy || "?")}</small></span>${ICON.chevron}</a>`).join("");
 
-async function uploadToSlot(chapterId, slot, f, onProgress) {
+async function uploadToSlot(chapterId, slot, f, onProgress, hash) {
   const base = { chapter: chapterId, slot, by: getName(), name: f.name };
   const post = (path, body) => api(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
   const start = await post("files/start", { ...base, size: f.size });
   await putWithProgress(start.uploadUrl, f, onProgress);
-  return post("files/finish", { ...base, key: start.key });
+  return post("files/finish", { ...base, key: start.key, hash });
 }
 
 
