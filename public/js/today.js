@@ -25,6 +25,8 @@ function renderToday() {
       ${fer ? `<div class="page-sub">Jour férié : <b>${esc(fer)}</b></div>` : atWork ? `<div class="page-sub">Journée en <b>entreprise</b></div>` : ""}
     </div></div>
 
+    ${announceBanner()}
+
     <div class="section">
       <h2>Au programme aujourd'hui <button data-go-add>Ajouter</button></h2>
       <div class="list">${todays.length ? todays.map((e) => evCard(e)).join("") : `<div class="invite">${atWork ? "Journée en entreprise, pas de cours." : "Rien de prévu aujourd'hui."}</div>`}</div>

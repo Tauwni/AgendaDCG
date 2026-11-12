@@ -359,6 +359,8 @@ AgendaDCG/
 | `js/events.js` | Devoirs et évaluations : création, modification, fiche, pièces jointes |
 | `js/cours.js` | Bibliothèque de cours, PDF, recherche dans le texte |
 | `js/import.js` | Import d'un dossier entier de cours (compte administrateur) |
+| `js/exam.js` | Suivi des chapitres révisés et examen blanc chronométré |
+| `js/social.js` | Annonce à la classe et questions sous les devoirs |
 | `js/settings.js` | Notifications, mise à jour, Réglages, démarrage |
 | `tts.js` | Lecture à voix haute des PDF |
 | `pdf-tools.js` | Compression et conversion des PDF avant envoi |

@@ -333,6 +333,7 @@ function openDetail(id) {
             ${slotRows(c, { editable: false })}
           </div>`).join("") : `<div class="group"><div class="hint">Aucun chapitre lié. Touche « Modifier » pour en choisir dans la bibliothèque.</div></div>`}
       </div>
+      ${commentsBlock(e)}
       <div>
         <div class="label">Historique</div>
         <div class="group history">${hist.map((h) => `<div><b>${esc(h.by)}</b> ${esc(h.action)} · ${ago(h.at)}</div>`).join("")}</div>

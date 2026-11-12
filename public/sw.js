@@ -1,7 +1,7 @@
 // Hors ligne : la page et les dernières données restent lisibles sans réseau,
 // plus les 3 derniers PDF ouverts (pas plus, pour ne pas remplir le téléphone).
-const SHELL = "agenda-shell-v4", DATA = "agenda-data-v1", PDF = "agenda-pdf-v1", MAX_PDF = 3;
-const ASSETS = ["/pdf-tools.js", "/tts.js", ...["core", "reviser", "session", "today", "agenda", "events", "cours", "import", "settings"].map((n) => `/js/${n}.js`)];
+const SHELL = "agenda-shell-v5", DATA = "agenda-data-v1", PDF = "agenda-pdf-v1", MAX_PDF = 3;
+const ASSETS = ["/pdf-tools.js", "/tts.js", ...["core", "reviser", "session", "today", "agenda", "events", "cours", "import", "exam", "social", "settings"].map((n) => `/js/${n}.js`)];
 const DATA_PATHS = ["/api/events", "/api/chapters", "/api/profile", "/schedule.json", "/api/me"];
 
 self.addEventListener("install", (event) => {

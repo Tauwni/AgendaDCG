@@ -18,12 +18,12 @@ function renderCours() {
     if (q.trim()) {
       const hits = state.chapters.filter((c) => norm(c.title).includes(norm(q)) || norm(c.subject).includes(norm(q)));
       box.innerHTML = hits.length ? `<div class="group">${hits.map((c) => `
-        <button class="nav-row" data-chapter="${c.id}"><span class="nav-body"><b>${esc(c.title)}</b><small>${esc(c.subject)}</small><span class="chips">${slotChips(c)}</span></span>${ICON.chevron}</button>`).join("")}</div>`
+        <button class="nav-row" data-chapter="${c.id}"><span class="nav-body"><b>${isRevised(c.id) ? "✓ " : ""}${esc(c.title)}</b><small>${esc(c.subject)}</small><span class="chips">${slotChips(c)}</span></span>${ICON.chevron}</button>`).join("")}</div>`
         : `<div class="empty">Aucun résultat</div>`;
     } else {
       const subjects = allSubjects().filter((s) => chaptersOf(s).length);
       box.innerHTML = subjects.length ? `<div class="group">${subjects.map((s) => `
-        <button class="nav-row" data-subject="${esc(s)}"><span class="folder">${ICON.folder}</span><span class="nav-body"><b>${esc(s)}</b><small>${plural(chaptersOf(s).length, "chapitre")}</small></span>${ICON.chevron}</button>`).join("")}</div>`
+        <button class="nav-row" data-subject="${esc(s)}"><span class="folder">${ICON.folder}</span><span class="nav-body"><b>${esc(s)}</b><small>${plural(chaptersOf(s).length, "chapitre")} · ${subjectProgress(s).done} révisé${subjectProgress(s).done > 1 ? "s" : ""}</small>${progressBar(subjectProgress(s).pct)}</span>${ICON.chevron}</button>`).join("")}</div>`
         : `<button class="invite" data-act="newChapter">${ICON.plus}<span>La bibliothèque est vide. <b>Ajouter le premier chapitre</b></span></button>`;
     }
     box.querySelectorAll("[data-subject]").forEach((b) => b.onclick = () => openFolder(b.dataset.subject));
@@ -101,7 +101,7 @@ function openFolder(subject) {
     <div class="sheet-body">
       <h2 class="folder-title">${esc(name)}</h2>
       <div class="group">${list.map((c) => `
-        <button class="nav-row" data-chapter="${c.id}"><span class="nav-body"><b>${esc(c.title)}</b><span class="chips">${slotChips(c)}</span></span>${ICON.chevron}</button>`).join("")}</div>
+        <button class="nav-row" data-chapter="${c.id}"><span class="nav-body"><b>${isRevised(c.id) ? "✓ " : ""}${esc(c.title)}</b><span class="chips">${slotChips(c)}</span></span>${ICON.chevron}</button>`).join("")}</div>
     </div>`);
   bd.querySelector("[data-act=back]").onclick = () => closeSheet();
   bd.querySelector("[data-act=new]").onclick = () => openChapterEdit(null, { subject: name, onCancel: () => openFolder(name) });
@@ -127,6 +127,8 @@ function openChapter(id, back, backLabel) {
         <h2 class="folder-title">${esc(c.title)}</h2>
       </div>
       <div class="group">${slotRows(c, { editable: true })}</div>
+      <button class="btn-row ${isRevised(c.id) ? "" : "blue"}" data-revised="${c.id}">${isRevised(c.id) ? "✓ Révisé · annuler" : "Marquer comme révisé"}</button>
+      ${c.files.sujet ? `<button class="btn-row" data-open-exam="${c.id}">⏱ Faire ce sujet en examen blanc</button>` : ""}
       ${uses.length ? `<div><div class="label">Utilisé dans</div><div class="group">${uses.map((e) => `
         <button class="nav-row" data-event="${e.id}"><span class="nav-body"><b>${esc(e.title)}</b><small>${kindLabel(e.kind)} · ${shortDate(e.date)}</small></span>${ICON.chevron}</button>`).join("")}</div></div>` : ""}
       <div>

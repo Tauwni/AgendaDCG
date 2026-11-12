@@ -119,6 +119,7 @@ function renderSettings() {
       <div class="label" style="margin-top:8px">Ces réglages valent pour tous les appareils où tu as activé les notifications.</div>
     </div>
 
+    ${announceAdmin()}
     <div class="section">
       <h2>Révisions</h2>
       <button class="btn-row blue" data-act="levels">${hasLevels() ? "Modifier mon niveau par matière" : "Personnaliser mes révisions (1 min)"}</button>

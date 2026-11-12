@@ -33,6 +33,7 @@ function revisionProgram() {
   return `<div class="section"><h2>Mon programme de révision</h2>
     ${hasLevels() ? `<p class="page-sub" style="margin:0 0 8px">Ma méthode : <b>${mode}</b>${revMode() === advisedMode() ? " (conseillée pour toi)" : ""}.</p>` : ""}
     <div class="group">${slots.map(revRow).join("")}</div>
+    <div style="margin-top:8px">${examButton()}</div>
     <button class="btn-row ${hasLevels() ? "" : "blue"}" style="margin-top:8px" data-open-levels>${hasLevels() ? "Modifier ma méthode et mon niveau" : "Personnaliser mes révisions (1 min)"}</button></div>`;
 }
 
@@ -77,7 +78,8 @@ function revisionPicks(key) {
   const deadlines = state.events.filter((e) => ["eval", "examen", "devoir", "exercice"].includes(e.kind || "eval") && e.date > sat && !isDone(e.id));
   for (const s of revSubjects()) {
     const lvl = levelOf(s) ?? 5, weak = (11 - lvl) / 10;
-    const chs = chaptersOf(s);
+    const all = chaptersOf(s), fresh = all.filter((c) => !recentlyRevised(c.id));
+    const chs = fresh.length ? fresh : all; // tout est révisé : on repart pour un tour
     for (const e of deadlines.filter((x) => sameSubject(x.subject, s))) {
       const days = Math.round((parse(e.date) - parse(sat)) / 864e5);
       if (days > 14) continue;
@@ -133,13 +135,14 @@ function revisionDetail(c) {
   if (!isSujetSlot(c)) {
     const after = revMode() === "sujets" ? " En fin d'après-midi, tu feras les sujets de ces chapitres." : "";
     return modeLine + `<div class="detail-sub" style="margin-bottom:8px">Relis le cours, fais-toi une fiche et récite sans regarder.${after}</div>`
-      + picks.map((p) => `<div class="label">${esc(pickLabel(p))} · ${esc(p.why)}</div><div class="group">${fileOf(p.chapter, "cours") ? fileLink(fileOf(p.chapter, "cours"), "Fiche de cours") + `<button class="btn-row" data-listen="${esc(fileOf(p.chapter, "cours").key)}" data-title="${esc(pickLabel(p))}">🎧 Écouter la fiche</button>` : `<div class="hint">Pas de fiche de cours en ligne : reprends ton cours.</div>`}</div>`).join("");
+      + picks.map((p) => `<div class="label">${esc(pickLabel(p))} · ${esc(p.why)}</div><div class="group">${fileOf(p.chapter, "cours") ? fileLink(fileOf(p.chapter, "cours"), "Fiche de cours") + `<button class="btn-row" data-listen="${esc(fileOf(p.chapter, "cours").key)}" data-title="${esc(pickLabel(p))}">🎧 Écouter la fiche</button>` + revisedButton(p.chapter) : `<div class="hint">Pas de fiche de cours en ligne : reprends ton cours.</div>`}</div>`).join("");
   }
   const withSujet = picks.filter((p) => fileOf(p.chapter, "sujet")), without = picks.filter((p) => !fileOf(p.chapter, "sujet"));
   return modeLine + `<div class="detail-sub" style="margin-bottom:8px">Les sujets des chapitres révisés ce matin. Fais-les sans regarder la correction.</div>`
     + withSujet.map((p) => `<div class="label">${esc(pickLabel(p))}</div><div class="group">${fileLink(fileOf(p.chapter, "sujet"), "Sujet")}${fileOf(p.chapter, "corrige") ? `<button class="btn-row" data-corr="${esc(fileOf(p.chapter, "corrige").key)}">Voir la correction</button>` : `<div class="hint">Pas de correction en ligne pour ce sujet.</div>`}</div>`).join("")
     + (without.length ? `<div class="label" style="margin-top:12px">${withSujet.length ? "Pas de sujet pour l'autre chapitre." : "Pas de sujet en ligne pour ces chapitres."} Sinon voici des chapitres à réviser :</div>${list(without)}` : "");
 }
+const revisedButton = (ch) => ch ? `<button class="btn-row ${isRevised(ch.id) ? "" : "blue"}" data-revised="${ch.id}">${isRevised(ch.id) ? "✓ Révisé · annuler" : "Marquer comme révisé"}</button>` : "";
 const pickLabel = (p) => p.chapter ? `${p.subject.split(" · ")[0]} · ${p.chapter.title}` : `${p.subject.split(" · ")[0]} · reprendre le cours`;
 function openLevels(after) {
   const subs = revSubjects();

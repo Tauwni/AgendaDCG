@@ -1,6 +1,6 @@
 import { getStore } from "@netlify/blobs";
 import { createHmac, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
-import { handleAdmin, readSchedule } from "../lib/admin.mjs";
+import { handleAdmin, readSchedule, config as settings } from "../lib/admin.mjs";
 import { bump, trash, purgeTrash } from "../lib/shared.mjs";
 import { KINDS, events, profiles, listAll, profileId, pushReady, sendPush, frDate, describe } from "../lib/shared.mjs";
 
@@ -117,7 +117,7 @@ function readPrefs(p) {
 }
 
 const publicProfile = (p) => ({
-  id: p.id, name: p.name, done: p.done || [], grades: p.grades || [], prefs: p.prefs || readPrefs({}), levels: p.levels || null, admin: !!p.admin,
+  id: p.id, name: p.name, done: p.done || [], grades: p.grades || [], prefs: p.prefs || readPrefs({}), levels: p.levels || null, admin: !!p.admin, revised: p.revised || {},
   pushDevices: (p.subs || []).length,
 });
 
@@ -236,6 +236,13 @@ async function handleProfile(req, url, id, method) {
     if (body.done) done.add(eid); else done.delete(eid);
     if (body.done) await bump({ done: 1 });
     profile.done = [...done].slice(-3000);
+  } else if (id === "revised" && method === "PUT") {
+    // Chapitres marqués « révisé » (perso) : { idChapitre: date }
+    const cid = String(body.chapter || "");
+    if (!UUID.test(cid)) return json({ error: "Chapitre invalide" }, 400);
+    const revised = { ...(profile.revised || {}) };
+    if (body.revised) revised[cid] = new Date().toISOString().slice(0, 10); else delete revised[cid];
+    profile.revised = Object.fromEntries(Object.entries(revised).slice(-500));
   } else if (id === "levels" && method === "PUT") {
     const out = {};
     for (const [k, v] of Object.entries(body.levels || {}).slice(0, 30)) { const n = Math.round(Number(v)); if (n >= 1 && n <= 10) out[String(k).slice(0, 60)] = n; }
@@ -291,7 +298,7 @@ async function buildIcs(p, origin) {
 
 export default async (req) => {
   const url = new URL(req.url);
-  const [resource, id] = url.pathname.replace(/^\/api\/?/, "").split("/").filter(Boolean);
+  const [resource, id, sub, subId] = url.pathname.replace(/^\/api\/?/, "").split("/").filter(Boolean);
   const method = req.method;
 
   if (resource === "admin") return handleAdmin(req, url, id);
@@ -377,7 +384,31 @@ export default async (req) => {
 
     if (method === "GET") return json(existing);
 
-    if (method === "PUT") {
+// Questions / réponses sous un devoir
+    if (sub === "comments") {
+      if (!me) return json({ error: "Connecte-toi à ton compte" }, 400);
+      const comments = existing.comments || [];
+      if (method === "POST") {
+        const body = await req.json().catch(() => ({}));
+        const text = cleanText(body.text, 500);
+        if (!text) return json({ error: "Écris ton message" }, 400);
+        if (comments.length >= 100) return json({ error: "Trop de messages sur ce devoir" }, 400);
+        const updated = { ...existing, comments: [...comments, { id: randomUUID(), by: me, at: new Date().toISOString(), text }] };
+        await events().setJSON(id, updated);
+        return json(updated, 201);
+      }
+      if (method === "DELETE" && subId) {
+        const c = comments.find((x) => x.id === subId);
+        if (!c) return json({ error: "Message introuvable" }, 404);
+        if (c.by !== me && !isAdminUser) return json({ error: "Tu ne peux supprimer que tes messages" }, 403);
+        const updated = { ...existing, comments: comments.filter((x) => x.id !== subId) };
+        await events().setJSON(id, updated);
+        return json(updated);
+      }
+      return json({ error: "Introuvable" }, 404);
+    }
+
+        if (method === "PUT") {
       const body = await req.json().catch(() => ({}));
       const by = me;
       if (!by) return json({ error: "Connecte-toi à ton compte" }, 400);
@@ -396,6 +427,24 @@ export default async (req) => {
       await purgeTrash(deleteR2).catch(() => {});
       await bump({ deleted: 1 });
       return json({ ok: true });
+    }
+  }
+
+  // Annonce à toute la classe (écrite par un compte administrateur, affichée sur l'accueil)
+  if (resource === "announce") {
+    if (method === "GET") return json((await settings().get("announce", { type: "json" })) || {});
+    if (method === "PUT") {
+      if (!isAdminUser) return json({ error: "Réservé à l'administrateur" }, 403);
+      const body = await req.json().catch(() => ({}));
+      const text = cleanText(body.text, 400);
+      if (!text) { await settings().delete("announce"); return json({}); }
+      const a = { id: randomUUID(), text, by: me, at: new Date().toISOString() };
+      await settings().setJSON("announce", a);
+      if (pushReady()) {
+        const all = await listAll(profiles());
+        await Promise.all(all.filter((p) => p.id !== mePid && p.subs?.length).map((p) => sendPush(p, { title: "Annonce · Agenda DCG", body: text, url: "/", tag: `announce-${a.id}` }).catch(() => {})));
+      }
+      return json(a);
     }
   }
 
